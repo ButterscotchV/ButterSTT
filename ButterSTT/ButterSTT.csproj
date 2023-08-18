@@ -12,4 +12,8 @@
     <PackageReference Include="NAudio" Version="2.1.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Dependencies\CoreOSC-VRC-UTF8\CoreOSC\CoreOSC.csproj" />
+  </ItemGroup>
+
 </Project>

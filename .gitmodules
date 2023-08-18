@@ -1,0 +1,3 @@
+[submodule "Dependencies/CoreOSC-VRC-UTF8"]
+	path = Dependencies/CoreOSC-VRC-UTF8
+	url = https://github.com/VRCWizard/CoreOSC-VRC-UTF8.git

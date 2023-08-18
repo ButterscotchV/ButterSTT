@@ -18,7 +18,11 @@ namespace ButterSTT
         private readonly AprilSession Session;
 
         // Output
+        private readonly StringBuilder consoleOutput = new();
         private readonly StringBuilder aprilOutput = new();
+        private readonly OSCHandler oscHandler = new();
+
+        private DateTime lastMessage = DateTime.Now;
 
         public int WaveDeviceNumber { get; private set; } = 0;
         public bool MicrophoneRecording { get; private set; } = false;
@@ -108,18 +112,19 @@ namespace ButterSTT
 
         private void OnAprilTokens(AprilResultKind result, AprilToken[] tokens)
         {
+            consoleOutput.Clear();
             aprilOutput.Clear();
 
             switch (result)
             {
                 case AprilResultKind.PartialRecognition:
-                    aprilOutput.Append("- ");
+                    consoleOutput.Append("- ");
                     break;
                 case AprilResultKind.FinalRecognition:
-                    aprilOutput.Append("@ ");
+                    consoleOutput.Append("@ ");
                     break;
                 default:
-                    aprilOutput.Append(' ');
+                    consoleOutput.Append(' ');
                     break;
             }
 
@@ -128,7 +133,24 @@ namespace ButterSTT
                 aprilOutput.Append(token.Token);
             }
 
-            Console.WriteLine(aprilOutput.ToString().Trim());
+            var aprilOutputString = aprilOutput.ToString().Trim();
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(aprilOutputString) && (DateTime.Now - lastMessage).TotalSeconds > 1d)
+                {
+                    lastMessage = DateTime.Now;
+                    //oscHandler.SendTyping(false);
+                    oscHandler.SendMessage(aprilOutputString);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+
+            consoleOutput.Append(aprilOutputString);
+            Console.WriteLine(consoleOutput);
         }
 
         public void Dispose()
