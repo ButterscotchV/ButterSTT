@@ -134,22 +134,27 @@ namespace ButterSTT
                 aprilOutput.Append(token.Token);
             }
 
-            var aprilOutputString = EnglishCapitalization.Capitalize(aprilOutput.ToString().Trim());
+            var aprilOutputString = tokens.Length > 0 ? EnglishCapitalization.Capitalize(aprilOutput.ToString().Trim()) : "";
 
             try
             {
-                if (!string.IsNullOrWhiteSpace(aprilOutputString) && (DateTime.Now - lastMessage).TotalSeconds > 1.3d)
+                if (tokens.Length > 0 && !string.IsNullOrWhiteSpace(aprilOutputString))
                 {
-                    lastMessage = DateTime.Now;
-                    if (result != AprilResultKind.FinalRecognition)
+                    // Only print if at the end of a word or sentence, we don't want to print incomplete words
+                    var lastToken = tokens.Last();
+                    if ((lastToken.WordBoundary || lastToken.SentenceEnd) && (DateTime.Now - lastMessage).TotalSeconds > 1.3d)
                     {
-                        // Still typing the message... Show as typing!
-                        oscHandler.OSCSender.Send(new OscBundle(0, OSCHandler.MakeChatboxInput(aprilOutputString), OSCHandler.MakeChatboxTyping(true)));
-                    }
-                    else
-                    {
-                        // Just send the message, no more typing
-                        oscHandler.OSCSender.Send(OSCHandler.MakeChatboxInput(aprilOutputString));
+                        lastMessage = DateTime.Now;
+                        if (result != AprilResultKind.FinalRecognition)
+                        {
+                            // Still typing the message... Show as typing!
+                            oscHandler.OSCSender.Send(new OscBundle(0, OSCHandler.MakeChatboxInput(aprilOutputString), OSCHandler.MakeChatboxTyping(true)));
+                        }
+                        else
+                        {
+                            // Just send the message, no more typing
+                            oscHandler.OSCSender.Send(OSCHandler.MakeChatboxInput(aprilOutputString));
+                        }
                     }
                 }
             }
