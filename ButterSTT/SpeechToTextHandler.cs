@@ -138,10 +138,19 @@ namespace ButterSTT
 
             try
             {
-                if (!string.IsNullOrWhiteSpace(aprilOutputString) && ((DateTime.Now - lastMessage).TotalSeconds > 1d || result == AprilResultKind.FinalRecognition))
+                if (!string.IsNullOrWhiteSpace(aprilOutputString) && (DateTime.Now - lastMessage).TotalSeconds > 1d)
                 {
                     lastMessage = DateTime.Now;
-                    oscHandler.OSCSender.Send(new OscBundle(0, OSCHandler.MakeChatboxTyping(result != AprilResultKind.FinalRecognition), OSCHandler.MakeChatboxInput(aprilOutputString)));
+                    if (result != AprilResultKind.FinalRecognition)
+                    {
+                        // Still typing the message... Show as typing!
+                        oscHandler.OSCSender.Send(new OscBundle(0, OSCHandler.MakeChatboxInput(aprilOutputString), OSCHandler.MakeChatboxTyping(true)));
+                    }
+                    else
+                    {
+                        // Just send the message, no more typing
+                        oscHandler.OSCSender.Send(OSCHandler.MakeChatboxInput(aprilOutputString));
+                    }
                 }
             }
             catch (Exception ex)
