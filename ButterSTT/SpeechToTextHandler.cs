@@ -7,144 +7,109 @@ namespace ButterSTT
 {
     public class SpeechToTextHandler : IDisposable
     {
-        private WaveInEvent? AudioIn;
-        private AprilModel? Model;
-        private AprilSession? Session;
+        // Audio
+        private readonly WaveInEvent AudioIn;
 
+        // Model
+        private readonly AprilModel Model;
+        public readonly string ModelPath;
+
+        // Session
+        private readonly AprilSession Session;
+
+        // Output
+        private readonly StringBuilder aprilOutput = new();
+
+        public int WaveDeviceNumber { get; private set; } = 0;
         public bool MicrophoneRecording { get; private set; } = false;
-        public int WaveDeviceNumber => AudioIn?.DeviceNumber ?? 0;
-        public string ModelPath { get; private set; } = "";
 
-        public void ConnectMicrophone(int deviceNumber = 0)
+        public SpeechToTextHandler(string modelPath, int deviceNumber = 0)
         {
-            InternalConnectMicrophone(deviceNumber, Model?.SampleRate ?? 16000, 16);
-        }
+            // Load model
+            Model = new AprilModel(modelPath);
+            ModelPath = modelPath;
 
-        private void InternalConnectMicrophone(int deviceNumber, int sampleRate, int bits)
-        {
-            DisconnectMicrophone();
+            Console.WriteLine($"Model loaded from \"{modelPath}\":\n  > Name: {Model.Name}\n  > Description: {Model.Description}\n  > Language: {Model.Language}\n  > Sample Rate: {Model.SampleRate} Hz");
 
-            var audioIn = new WaveInEvent()
+            // Initialize session
+            Session = new AprilSession(Model, OnAprilTokens, async: true);
+
+            // Initialize microphone
+            AudioIn = new WaveInEvent()
             {
                 DeviceNumber = deviceNumber,
-                WaveFormat = new(sampleRate, bits, 1)
+                WaveFormat = new(Model.SampleRate, 16, 1)
             };
-
-            audioIn.DataAvailable += OnMicData;
-            audioIn.RecordingStopped += OnMicStop;
-
-            AudioIn = audioIn;
+            AudioIn.DataAvailable += OnMicData;
+            AudioIn.RecordingStopped += OnMicStop;
         }
 
-        public void DisconnectMicrophone()
+        public void SwapMicrophoneDevice(int deviceNumber = 0)
         {
-            var audioIn = AudioIn;
-            if (audioIn != null)
-            {
-                InternalStopRecording(audioIn);
-                audioIn.Dispose();
-            }
+            var wasRecording = MicrophoneRecording;
 
-            AudioIn = null;
+            // Pause recording, then swap devices
+            if (wasRecording) StopRecording();
+            AudioIn.DeviceNumber = deviceNumber;
+            if (wasRecording) StartRecording();
         }
 
         public void StartRecording()
         {
-            var audioIn = AudioIn;
-            if (audioIn != null)
-            {
-                audioIn.StartRecording();
-                MicrophoneRecording = true;
-            }
+            AudioIn.StartRecording();
+            MicrophoneRecording = true;
         }
 
         public void StopRecording()
         {
-            var audioIn = AudioIn;
-            if (audioIn != null) InternalStopRecording(audioIn);
-        }
-
-        private void InternalStopRecording(WaveInEvent audioIn)
-        {
-            audioIn.StopRecording();
+            AudioIn.StopRecording();
             MicrophoneRecording = false;
-        }
-
-        public void LoadModel(string modelPath)
-        {
-            var model = new AprilModel(modelPath);
-
-            Model = model;
-            ModelPath = modelPath;
-
-            Console.WriteLine($"Model loaded from \"{modelPath}\":\n  > Name: {model.Name}\n  > Description: {model.Description}\n  > Language: {model.Language}\n  > Sample Rate: {model.SampleRate} Hz");
-        }
-
-        public void StartSession()
-        {
-            var model = Model ?? throw new Exception("Unable to start a session without a model! Please load a model first.");
-
-            // Handle audio in not matching the model wavelength automatically
-            var audioIn = AudioIn;
-            if (audioIn != null && model.SampleRate != audioIn.WaveFormat.SampleRate)
-            {
-                // Read the audio in settings
-                var deviceNum = audioIn.DeviceNumber;
-                var bitCount = audioIn.WaveFormat.BitsPerSample;
-                var wasRecording = MicrophoneRecording;
-
-                // Reconnect audio in using the same settings but with the sample rate modified
-                InternalConnectMicrophone(deviceNum, model.SampleRate, bitCount);
-                if (wasRecording) StartRecording();
-            }
-
-            Session = new AprilSession(model, OnAprilTokens, async: true);
         }
 
         private void OnMicData(object? sender, WaveInEventArgs args)
         {
-            AprilSession? session = Session;
-            if (args.BytesRecorded <= 0 || session == null) return;
+            if (args.BytesRecorded <= 0) return;
 
             // Convert the bytes to shorts
             var shorts = new short[args.BytesRecorded / 2];
             Buffer.BlockCopy(args.Buffer, 0, shorts, 0, args.BytesRecorded);
-            session.FeedPCM16(shorts, shorts.Length);
+            Session.FeedPCM16(shorts, shorts.Length);
         }
 
         private void OnMicStop(object? sender, StoppedEventArgs args)
         {
-            Session?.Flush();
+            Session.Flush();
         }
 
         private void OnAprilTokens(AprilResultKind result, AprilToken[] tokens)
         {
-            var stringBuilder = new StringBuilder();
+            aprilOutput.Clear();
 
             switch (result)
             {
                 case AprilResultKind.PartialRecognition:
-                    stringBuilder.Append("- ");
+                    aprilOutput.Append("- ");
                     break;
                 case AprilResultKind.FinalRecognition:
-                    stringBuilder.Append("@ ");
+                    aprilOutput.Append("@ ");
                     break;
                 default:
-                    stringBuilder.Append(' ');
+                    aprilOutput.Append(' ');
                     break;
             }
 
             foreach (AprilToken token in tokens)
             {
-                stringBuilder.Append(token.Token);
+                aprilOutput.Append(token.Token);
             }
 
-            Console.WriteLine(stringBuilder.ToString().Trim());
+            Console.WriteLine(aprilOutput.ToString().Trim());
         }
 
         public void Dispose()
         {
-            DisconnectMicrophone();
+            StopRecording();
+            AudioIn.Dispose();
             GC.SuppressFinalize(this);
         }
     }
