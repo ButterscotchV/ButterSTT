@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Text;
 using AprilAsr;
 using NAudio.Wave;
@@ -9,6 +8,7 @@ namespace ButterSTT
     {
         // Audio
         private readonly WaveInEvent AudioIn;
+        private bool RestartRecordingNextStop = false;
 
         // Model
         private readonly AprilModel Model;
@@ -40,18 +40,11 @@ namespace ButterSTT
                 DeviceNumber = deviceNumber,
                 WaveFormat = new(Model.SampleRate, 16, 1)
             };
+            WaveDeviceNumber = deviceNumber;
+
+            // Register microphone events
             AudioIn.DataAvailable += OnMicData;
             AudioIn.RecordingStopped += OnMicStop;
-        }
-
-        public void SwapMicrophoneDevice(int deviceNumber = 0)
-        {
-            var wasRecording = MicrophoneRecording;
-
-            // Pause recording, then swap devices
-            if (wasRecording) StopRecording();
-            AudioIn.DeviceNumber = deviceNumber;
-            if (wasRecording) StartRecording();
         }
 
         public void StartRecording()
@@ -62,8 +55,37 @@ namespace ButterSTT
 
         public void StopRecording()
         {
+            // Tell the recording not to restart
+            RestartRecordingNextStop = false;
+
+            // This keeps recording for a little bit longer, it will call the event when it's done
             AudioIn.StopRecording();
-            MicrophoneRecording = false;
+        }
+
+        public void SwapMicrophoneDevice(int deviceNumber)
+        {
+            // If it's already using this device, ignore it and continue
+            if (AudioIn.DeviceNumber == deviceNumber) return;
+
+            var wasRecording = MicrophoneRecording;
+
+            // Make sure the recording is stopped
+            StopRecording();
+
+            // Swap devices
+            AudioIn.DeviceNumber = deviceNumber;
+            WaveDeviceNumber = deviceNumber;
+
+            // If it's already stopped, restart it immediately
+            // Otherwise, start it again when it's done stopping
+            if (wasRecording && !MicrophoneRecording)
+            {
+                StartRecording();
+            }
+            else
+            {
+                RestartRecordingNextStop = true;
+            }
         }
 
         private void OnMicData(object? sender, WaveInEventArgs args)
@@ -79,6 +101,9 @@ namespace ButterSTT
         private void OnMicStop(object? sender, StoppedEventArgs args)
         {
             Session.Flush();
+            MicrophoneRecording = false;
+
+            if (RestartRecordingNextStop) StartRecording();
         }
 
         private void OnAprilTokens(AprilResultKind result, AprilToken[] tokens)
