@@ -138,7 +138,7 @@ namespace ButterSTT
 
             try
             {
-                if (!string.IsNullOrWhiteSpace(aprilOutputString) && (DateTime.Now - lastMessage).TotalSeconds > 1d)
+                if (!string.IsNullOrWhiteSpace(aprilOutputString) && (DateTime.Now - lastMessage).TotalSeconds > 1.3d)
                 {
                     lastMessage = DateTime.Now;
                     if (result != AprilResultKind.FinalRecognition)
