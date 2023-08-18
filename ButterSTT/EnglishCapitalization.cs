@@ -11,7 +11,7 @@ namespace ButterSTT
             return BasicRegex.Replace(message.ToLower(), c => c.Value.ToUpper());
         }
 
-        [GeneratedRegex(@"(^|[?!.])\s*?([a-z])|i([^a-z]|$)", RegexOptions.Multiline & RegexOptions.NonBacktracking)]
+        [GeneratedRegex(@"(^|[?!.])\s*?([a-z])|(^|[^a-z])i($|[^a-z])", RegexOptions.Multiline & RegexOptions.NonBacktracking)]
         private static partial Regex BasicCapitals();
     }
 }
