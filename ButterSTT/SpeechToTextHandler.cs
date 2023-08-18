@@ -134,7 +134,7 @@ namespace ButterSTT
                 aprilOutput.Append(token.Token);
             }
 
-            var aprilOutputString = aprilOutput.ToString().Trim();
+            var aprilOutputString = EnglishCapitalization.Capitalize(aprilOutput.ToString().Trim());
 
             try
             {
