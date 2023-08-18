@@ -11,14 +11,14 @@ namespace ButterSTT
             OSCSender = new UDPSender(address, port);
         }
 
-        public void SendTyping(bool isTyping)
+        public static OscMessage MakeChatboxTyping(bool isTyping)
         {
-            OSCSender.Send(new OscMessage("/chatbox/typing", isTyping));
+            return new OscMessage("/chatbox/typing", isTyping);
         }
 
-        public void SendMessage(string message)
+        public static OscMessage MakeChatboxInput(string message, bool skipKeyboard = true, bool playNotification = false)
         {
-            OSCSender.Send(new OscMessage("/chatbox/input", message, true, false));
+            return new OscMessage("/chatbox/input", message, skipKeyboard, playNotification);
         }
     }
 }

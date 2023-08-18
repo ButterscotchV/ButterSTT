@@ -1,5 +1,6 @@
 using System.Text;
 using AprilAsr;
+using CoreOSC;
 using NAudio.Wave;
 
 namespace ButterSTT
@@ -137,11 +138,10 @@ namespace ButterSTT
 
             try
             {
-                if (!string.IsNullOrWhiteSpace(aprilOutputString) && (DateTime.Now - lastMessage).TotalSeconds > 1d)
+                if (!string.IsNullOrWhiteSpace(aprilOutputString) && ((DateTime.Now - lastMessage).TotalSeconds > 1d || result == AprilResultKind.FinalRecognition))
                 {
                     lastMessage = DateTime.Now;
-                    //oscHandler.SendTyping(false);
-                    oscHandler.SendMessage(aprilOutputString);
+                    oscHandler.OSCSender.Send(new OscBundle(0, OSCHandler.MakeChatboxTyping(result != AprilResultKind.FinalRecognition), OSCHandler.MakeChatboxInput(aprilOutputString)));
                 }
             }
             catch (Exception ex)
