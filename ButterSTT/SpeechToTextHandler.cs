@@ -34,7 +34,9 @@ namespace ButterSTT
             Model = new AprilModel(modelPath);
             ModelPath = modelPath;
 
-            Console.WriteLine($"Model loaded from \"{modelPath}\":\n  > Name: {Model.Name}\n  > Description: {Model.Description}\n  > Language: {Model.Language}\n  > Sample Rate: {Model.SampleRate} Hz");
+            Console.WriteLine(
+                $"Model loaded from \"{modelPath}\":\n  > Name: {Model.Name}\n  > Description: {Model.Description}\n  > Language: {Model.Language}\n  > Sample Rate: {Model.SampleRate} Hz"
+            );
 
             // Initialize session
             Session = new AprilSession(Model, OnAprilTokens, async: true);
@@ -70,7 +72,8 @@ namespace ButterSTT
         public void SwapMicrophoneDevice(int deviceNumber)
         {
             // If it's already using this device, ignore it and continue
-            if (AudioIn.DeviceNumber == deviceNumber) return;
+            if (AudioIn.DeviceNumber == deviceNumber)
+                return;
 
             var wasRecording = MicrophoneRecording;
 
@@ -95,7 +98,8 @@ namespace ButterSTT
 
         private void OnMicData(object? sender, WaveInEventArgs args)
         {
-            if (args.BytesRecorded <= 0) return;
+            if (args.BytesRecorded <= 0)
+                return;
 
             // Convert the bytes to shorts
             var shorts = new short[args.BytesRecorded / 2];
@@ -108,7 +112,8 @@ namespace ButterSTT
             Session.Flush();
             MicrophoneRecording = false;
 
-            if (RestartRecordingNextStop) StartRecording();
+            if (RestartRecordingNextStop)
+                StartRecording();
         }
 
         private void OnAprilTokens(AprilResultKind result, AprilToken[] tokens)
@@ -134,7 +139,10 @@ namespace ButterSTT
                 aprilOutput.Append(token.Token);
             }
 
-            var aprilOutputString = tokens.Length > 0 ? EnglishCapitalization.Capitalize(aprilOutput.ToString().Trim()) : "";
+            var aprilOutputString =
+                tokens.Length > 0
+                    ? EnglishCapitalization.Capitalize(aprilOutput.ToString().Trim())
+                    : "";
 
             try
             {
@@ -142,18 +150,29 @@ namespace ButterSTT
                 {
                     // Only print if at the end of a word or sentence, we don't want to print incomplete words
                     var lastToken = tokens.Last();
-                    if ((lastToken.WordBoundary || lastToken.SentenceEnd) && (DateTime.Now - lastMessage).TotalSeconds > 1.3d)
+                    if (
+                        (lastToken.WordBoundary || lastToken.SentenceEnd)
+                        && (DateTime.Now - lastMessage).TotalSeconds > 1.3d
+                    )
                     {
                         lastMessage = DateTime.Now;
                         if (result != AprilResultKind.FinalRecognition)
                         {
                             // Still typing the message... Show as typing!
-                            oscHandler.OSCSender.Send(new OscBundle(0, OSCHandler.MakeChatboxInput(aprilOutputString), OSCHandler.MakeChatboxTyping(true)));
+                            oscHandler.OSCSender.Send(
+                                new OscBundle(
+                                    0,
+                                    OSCHandler.MakeChatboxInput(aprilOutputString),
+                                    OSCHandler.MakeChatboxTyping(true)
+                                )
+                            );
                         }
                         else
                         {
                             // Just send the message, no more typing
-                            oscHandler.OSCSender.Send(OSCHandler.MakeChatboxInput(aprilOutputString));
+                            oscHandler.OSCSender.Send(
+                                OSCHandler.MakeChatboxInput(aprilOutputString)
+                            );
                         }
                     }
                 }

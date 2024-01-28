@@ -12,7 +12,10 @@ namespace ButterSTT
         }
 
         // Capitalizes starts of sentences and standalone "I"s, must be run on a lowercase string
-        [GeneratedRegex(@"(^|[?!.])\s*?([a-z])|(^|[^a-z])i($|[^a-z])", RegexOptions.Multiline & RegexOptions.NonBacktracking)]
+        [GeneratedRegex(
+            @"(^|[?!.])\s*?([a-z])|(^|[^a-z])i($|[^a-z])",
+            RegexOptions.Multiline & RegexOptions.NonBacktracking
+        )]
         private static partial Regex BasicCapitals();
     }
 }
