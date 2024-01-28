@@ -1,6 +1,6 @@
 using CoreOSC;
 
-namespace ButterSTT
+namespace ButterSTT.MessageSystem
 {
     public class OSCHandler
     {

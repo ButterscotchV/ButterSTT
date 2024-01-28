@@ -1,5 +1,6 @@
 using System.Text;
 using AprilAsr;
+using ButterSTT.MessageSystem;
 using ButterSTT.TextProcessing;
 using CoreOSC;
 using NAudio.Wave;
@@ -22,6 +23,7 @@ namespace ButterSTT
         // Output
         private readonly StringBuilder consoleOutput = new();
         private readonly StringBuilder aprilOutput = new();
+        private readonly MessageQueue messageQueue = new();
         private readonly OSCHandler oscHandler = new();
 
         private DateTime lastMessage = DateTime.Now;
@@ -144,6 +146,10 @@ namespace ButterSTT
                 tokens.Length > 0
                     ? EnglishCapitalization.Capitalize(aprilOutput.ToString().Trim())
                     : "";
+
+            messageQueue.CurParagraph = EnglishTextParser.ParseParagraph(aprilOutputString);
+            if (result == AprilResultKind.FinalRecognition)
+                messageQueue.FinishCurrentParagraph();
 
             try
             {
