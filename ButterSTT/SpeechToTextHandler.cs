@@ -1,5 +1,6 @@
 using System.Text;
 using AprilAsr;
+using ButterSTT.TextProcessing;
 using CoreOSC;
 using NAudio.Wave;
 
@@ -102,7 +103,7 @@ namespace ButterSTT
                 return;
 
             // Convert the bytes to shorts
-            var shorts = new short[args.BytesRecorded / 2];
+            var shorts = new short[args.BytesRecorded / sizeof(short)];
             Buffer.BlockCopy(args.Buffer, 0, shorts, 0, args.BytesRecorded);
             Session.FeedPCM16(shorts, shorts.Length);
         }
