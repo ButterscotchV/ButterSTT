@@ -119,6 +119,9 @@ namespace ButterSTT.MessageSystem
             }
         }
 
+        private static DateTime ComputeExpiration(TimeSpan span) =>
+            span >= TimeSpan.MaxValue ? DateTime.MaxValue : DateTime.UtcNow + span;
+
         private void ProgressWordQueue()
         {
             // Make sure there is enough room to fit a new word in the message,
@@ -136,12 +139,8 @@ namespace ButterSTT.MessageSystem
                 MessageWordQueue.Enqueue(
                     new MessageWord(
                         word,
-                        WordTime >= TimeSpan.MaxValue
-                            ? DateTime.MaxValue
-                            : DateTime.UtcNow + WordTime,
-                        HardWordTime >= TimeSpan.MaxValue
-                            ? DateTime.MaxValue
-                            : DateTime.UtcNow + HardWordTime
+                        ComputeExpiration(WordTime),
+                        ComputeExpiration(HardWordTime)
                     )
                 );
                 CurMessageLength += word.Length;
