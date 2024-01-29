@@ -17,7 +17,7 @@ namespace ButterSTT.MessageSystem
 
         private void InternLimitWordIndex()
         {
-            CurIndex.word = CurParagraph.Sentences[CurIndex.sentence].Words.Length - 1;
+            CurIndex.word = Math.Max(0, CurParagraph.Sentences[CurIndex.sentence].Words.Length - 1);
         }
 
         public void LimitParagraphIndex()
@@ -25,7 +25,7 @@ namespace ButterSTT.MessageSystem
             if (CurParagraph.Sentences.Length <= CurIndex.sentence)
             {
                 // Move to the end of the last known position
-                CurIndex.sentence = CurParagraph.Sentences.Length - 1;
+                CurIndex.sentence = Math.Max(0, CurParagraph.Sentences.Length - 1);
                 InternLimitWordIndex();
             }
             else if (CurParagraph.Sentences[CurIndex.sentence].Length <= CurIndex.word)
@@ -97,15 +97,8 @@ namespace ButterSTT.MessageSystem
             // If there's no queue and there's new words to display
             if (WordQueue.Count <= 0 && CurParagraph.Length > 0)
             {
-                // If there's no message to display besides the one in progress, display what we have now
-                if (MessageWordQueue.Count <= 0)
-                {
-                    return string.Concat(
-                            CurParagraph.Sentences.SelectMany(x => x.Words, (x, y) => y.Text)
-                        )
-                        .Trim();
-                }
-                else if (CurParagraph.Length <= MessageLength - CurMessageLength)
+                // Fit the whole current paragraph in the message if possible
+                if (CurParagraph.Length <= MessageLength - CurMessageLength)
                 {
                     return string.Concat(
                             string.Concat(MessageWordQueue.Select(w => w.Text)),
