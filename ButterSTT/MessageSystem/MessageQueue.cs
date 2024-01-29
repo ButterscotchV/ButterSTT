@@ -20,9 +20,14 @@ namespace ButterSTT.MessageSystem
         public int RealtimeQueuePadding = 36;
 
         /// <summary>
-        /// The amount of time before a word will expire.
+        /// The amount of time before a word will expire. Default is 3 seconds.
         /// </summary>
         public TimeSpan WordTime = TimeSpan.FromSeconds(3);
+
+        /// <summary>
+        /// The amount of time before a word will expire, being dequeued regardless of <see cref="MaxWordsDequeued"/>. Default is 30 seconds.
+        /// </summary>
+        public TimeSpan HardWordTime = TimeSpan.FromSeconds(30);
 
         public Paragraph CurParagraph;
         private (int sentence, int word) CurIndex;
@@ -133,7 +138,10 @@ namespace ButterSTT.MessageSystem
                         word,
                         WordTime >= TimeSpan.MaxValue
                             ? DateTime.MaxValue
-                            : DateTime.UtcNow + WordTime
+                            : DateTime.UtcNow + WordTime,
+                        HardWordTime >= TimeSpan.MaxValue
+                            ? DateTime.MaxValue
+                            : DateTime.UtcNow + HardWordTime
                     )
                 );
                 CurMessageLength += word.Length;
@@ -147,12 +155,18 @@ namespace ButterSTT.MessageSystem
             {
                 var dequeueCount = 0;
                 while (
-                    dequeueCount++ < MaxWordsDequeued
-                    && MessageWordQueue.TryPeek(out var expiredWord)
-                    && DateTime.UtcNow >= expiredWord.ExpiryTime
+                    MessageWordQueue.TryPeek(out var expiredWord)
+                    && (
+                        (
+                            dequeueCount < MaxWordsDequeued
+                            && DateTime.UtcNow >= expiredWord.ExpiryTime
+                        )
+                        || DateTime.UtcNow >= expiredWord.HardExpiryTime
+                    )
                 )
                 {
                     CurMessageLength -= MessageWordQueue.Dequeue().Text.Length;
+                    dequeueCount++;
                 }
             }
 

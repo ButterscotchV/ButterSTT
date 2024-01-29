@@ -18,8 +18,9 @@ namespace ButterSTT.MessageSystem.Tests
         {
             var queue = new MessageQueue
             {
+                MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
-                MaxWordsDequeued = int.MaxValue
+                HardWordTime = TimeSpan.Zero
             };
 
             var firstMessage = "Testing the queue system.";
@@ -42,8 +43,9 @@ namespace ButterSTT.MessageSystem.Tests
         {
             var queue = new MessageQueue
             {
+                MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
-                MaxWordsDequeued = int.MaxValue
+                HardWordTime = TimeSpan.Zero
             };
 
             var firstMessage = "Testing the queue system.";
@@ -59,12 +61,63 @@ namespace ButterSTT.MessageSystem.Tests
         }
 
         [Fact()]
+        public void MaxDequeueTest()
+        {
+            var queue = new MessageQueue
+            {
+                MaxWordsDequeued = 2,
+                WordTime = TimeSpan.Zero,
+                HardWordTime = TimeSpan.MaxValue
+            };
+
+            var firstMessage = "Testing the queue system.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
+            queue.FinishCurrentParagraph();
+            var curMessage = queue.GetCurrentMessage();
+            output.WriteLine($"First message: \"{curMessage}\"");
+            Assert.Equal(firstMessage, curMessage);
+
+            var secondMessage = "Second test message.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
+            queue.FinishCurrentParagraph();
+            curMessage = queue.GetCurrentMessage();
+            output.WriteLine($"Second message: \"{curMessage}\"");
+            Assert.Equal($"queue system. {secondMessage}", curMessage);
+        }
+
+        [Fact()]
+        public void HardWordTest()
+        {
+            var queue = new MessageQueue
+            {
+                MaxWordsDequeued = 2,
+                WordTime = TimeSpan.Zero,
+                HardWordTime = TimeSpan.Zero
+            };
+
+            var firstMessage = "Testing the queue system.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
+            queue.FinishCurrentParagraph();
+            var curMessage = queue.GetCurrentMessage();
+            output.WriteLine($"First message: \"{curMessage}\"");
+            Assert.Equal(firstMessage, curMessage);
+
+            var secondMessage = "Second test message.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
+            queue.FinishCurrentParagraph();
+            curMessage = queue.GetCurrentMessage();
+            output.WriteLine($"Second message: \"{curMessage}\"");
+            Assert.Equal(secondMessage, curMessage);
+        }
+
+        [Fact()]
         public void RealtimeTest()
         {
             var queue = new MessageQueue
             {
+                MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
-                MaxWordsDequeued = int.MaxValue
+                HardWordTime = TimeSpan.Zero
             };
 
             // Likely incomplete word
@@ -98,7 +151,12 @@ namespace ButterSTT.MessageSystem.Tests
         [Fact()]
         public void RealtimeAppendingTest()
         {
-            var queue = new MessageQueue { WordTime = TimeSpan.MaxValue, MaxWordsDequeued = 0 };
+            var queue = new MessageQueue
+            {
+                MaxWordsDequeued = 0,
+                WordTime = TimeSpan.MaxValue,
+                HardWordTime = TimeSpan.MaxValue
+            };
 
             // Initial message, fully completed
             var firstMessage = "Testing the queue system.";
@@ -121,33 +179,14 @@ namespace ButterSTT.MessageSystem.Tests
         }
 
         [Fact()]
-        public void MaxDequeueTest()
-        {
-            var queue = new MessageQueue { WordTime = TimeSpan.Zero, MaxWordsDequeued = 2 };
-
-            var firstMessage = "Testing the queue system.";
-            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
-            queue.FinishCurrentParagraph();
-            var curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"First message: \"{curMessage}\"");
-            Assert.Equal(firstMessage, curMessage);
-
-            var secondMessage = "Second test message.";
-            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
-            queue.FinishCurrentParagraph();
-            curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Second message: \"{curMessage}\"");
-            Assert.Equal($"queue system. {secondMessage}", curMessage);
-        }
-
-        [Fact()]
         public void RealtimeAppendingTooLongTest()
         {
             var queue = new MessageQueue
             {
                 MessageLength = 33,
+                MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
-                MaxWordsDequeued = int.MaxValue
+                HardWordTime = TimeSpan.Zero
             };
 
             // Initial message, fully completed
@@ -169,8 +208,9 @@ namespace ButterSTT.MessageSystem.Tests
             var queue = new MessageQueue
             {
                 MessageLength = 18,
+                MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
-                MaxWordsDequeued = int.MaxValue
+                HardWordTime = TimeSpan.Zero
             };
 
             queue.CurParagraph = EnglishTextParser.ParseParagraph("Testing th");
