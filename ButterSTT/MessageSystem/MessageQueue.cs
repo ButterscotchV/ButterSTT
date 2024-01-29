@@ -34,7 +34,7 @@ namespace ButterSTT.MessageSystem
             }
         }
 
-        public void FinishCurrentParagraph()
+        public IEnumerable<string> ParagraphWordEnumerator()
         {
             // Limit the index if length has changed since last known
             LimitParagraphIndex();
@@ -42,21 +42,81 @@ namespace ButterSTT.MessageSystem
             // Queue all words after the current displayed ones
             for (var s = CurIndex.sentence; s < CurParagraph.Sentences.Length; s++)
             {
-                var wordCount = CurParagraph.Sentences[s].Words.Length;
-                for (var w = CurIndex.word; w < wordCount; w++)
+                var sentence = CurParagraph.Sentences[s];
+                for (
+                    var w = s <= CurIndex.sentence ? CurIndex.word : 0;
+                    w < sentence.Words.Length;
+                    w++
+                )
                 {
-                    var word = CurParagraph.Sentences[s].Words[w];
-                    WordQueue.Enqueue(
-                        $"{word.Text}{(w + 1 >= wordCount && !word.Text.EndsWith(' ') ? " " : "")}"
-                    );
+                    yield return sentence.Words[w].Text;
                 }
-                // Reset word index to 0 for following sentences
-                CurIndex.word = 0;
+            }
+        }
+
+        public void FinishCurrentParagraph()
+        {
+            // Queue all words after the current displayed ones
+            foreach (var word in ParagraphWordEnumerator())
+            {
+                WordQueue.Enqueue(word);
             }
 
             // Reset states
             CurParagraph = default;
             CurIndex = default;
+        }
+
+        public int ParagraphLengthFromIndex() => ParagraphWordEnumerator().Sum(w => w.Length);
+
+        public void QueueParagraphToFit(int padding = 0)
+        {
+            // Limit the index if length has changed since last known
+            LimitParagraphIndex();
+
+            var paragraphLen = ParagraphLengthFromIndex();
+            // Queue as few words after the current displayed ones
+            for (var s = CurIndex.sentence; s < CurParagraph.Sentences.Length; s++)
+            {
+                var sentence = CurParagraph.Sentences[s];
+                for (
+                    var w = s <= CurIndex.sentence ? CurIndex.word : 0;
+                    w < sentence.Words.Length;
+                    w++
+                )
+                {
+                    if (paragraphLen <= MessageLength - padding)
+                    {
+                        CurIndex = (s, w);
+                        return;
+                    }
+
+                    var word = sentence.Words[w].Text;
+                    WordQueue.Enqueue(word);
+                    paragraphLen -= word.Length;
+                }
+            }
+        }
+
+        private void ProgressWordQueue()
+        {
+            // Make sure there is enough room to fit a new word in the message
+            while (
+                WordQueue.TryPeek(out var newWord)
+                && CurMessageLength + newWord.Length < MessageLength
+            )
+            {
+                var word = WordQueue.Dequeue();
+                MessageWordQueue.Enqueue(
+                    new MessageWord(
+                        word,
+                        WordTime >= TimeSpan.MaxValue
+                            ? DateTime.MaxValue
+                            : DateTime.UtcNow + WordTime
+                    )
+                );
+                CurMessageLength += word.Length;
+            }
         }
 
         public string GetCurrentMessage()
@@ -75,43 +135,38 @@ namespace ButterSTT.MessageSystem
                 }
             }
 
+            if (CurParagraph.Length >= MessageLength)
+            {
+                // Queue with a padding of the max words times the average word length
+                QueueParagraphToFit(MaxWordsDequeued * 6);
+            }
+
+            ProgressWordQueue();
+
+            var message = string.Concat(MessageWordQueue.Select(w => w.Text));
+
             // If there's no queue and there's new words to display
             if (WordQueue.Count <= 0 && CurParagraph.Length > 0)
             {
-                // Fit the whole current paragraph in the message if possible
-                if (CurParagraph.Length <= MessageLength - CurMessageLength)
-                {
-                    return string.Concat(
-                            string.Concat(MessageWordQueue.Select(w => w.Text)),
-                            string.Concat(
-                                CurParagraph.Sentences.SelectMany(x => x.Words, (x, y) => y.Text)
-                            )
-                        )
-                        .Trim();
-                }
-            }
-
-            // Make sure there is enough room to fit a new word in the message and
-            // allow space for a dash after the current text if there is already more
-            while (
-                WordQueue.TryPeek(out var newWord)
-                && CurMessageLength + newWord.Length + (WordQueue.Count > 1 ? 1 : 0) < MessageLength
-            )
-            {
-                var word = WordQueue.Dequeue();
-                MessageWordQueue.Enqueue(
-                    new MessageWord(
-                        word,
-                        WordTime >= TimeSpan.MaxValue
-                            ? DateTime.MaxValue
-                            : DateTime.UtcNow + WordTime
-                    )
+                var availableLength = MessageLength - CurMessageLength;
+                var totalTaken = 0;
+                var paragraph = string.Concat(
+                    ParagraphWordEnumerator()
+                        .TakeWhile(w =>
+                        {
+                            if (totalTaken + w.Length <= availableLength)
+                            {
+                                totalTaken += w.Length;
+                                return true;
+                            }
+                            else
+                                return false;
+                        })
                 );
-                CurMessageLength += word.Length;
+                return (message + paragraph).Trim() + (CurParagraph.Length > totalTaken ? "-" : "");
             }
 
-            var message = string.Concat(MessageWordQueue.Select(w => w.Text)).Trim();
-            return $"{message}{(WordQueue.Count > 0 ? "-" : "")}";
+            return message.Trim() + (WordQueue.Count > 0 ? "-" : "");
         }
     }
 }

@@ -139,5 +139,49 @@ namespace ButterSTT.MessageSystem.Tests
             output.WriteLine($"Second message: \"{curMessage}\"");
             Assert.Equal($"queue system. {secondMessage}", curMessage);
         }
+
+        [Fact()]
+        public void RealtimeAppendingTooLongTest()
+        {
+            var queue = new MessageQueue
+            {
+                MessageLength = 33,
+                WordTime = TimeSpan.Zero,
+                MaxWordsDequeued = int.MaxValue
+            };
+
+            // Initial message, fully completed
+            var firstMessage = "Testing the queue system.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
+            queue.FinishCurrentParagraph();
+
+            // Add a partial sentence to it
+            var secondMessage = "Second test ";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
+            var curMessage = queue.GetCurrentMessage();
+            output.WriteLine($"Appended message: \"{curMessage}\"");
+            Assert.Equal($"{firstMessage} Second-", curMessage);
+        }
+
+        [Fact()]
+        public void RealtimeTooLongTest()
+        {
+            var queue = new MessageQueue
+            {
+                MessageLength = 18,
+                WordTime = TimeSpan.Zero,
+                MaxWordsDequeued = int.MaxValue
+            };
+
+            queue.CurParagraph = EnglishTextParser.ParseParagraph("Testing th");
+            var curMessage = queue.GetCurrentMessage();
+            output.WriteLine($"First message: \"{curMessage}\"");
+            Assert.Equal("Testing", curMessage);
+
+            queue.CurParagraph = EnglishTextParser.ParseParagraph("Testing the queue system.");
+            curMessage = queue.GetCurrentMessage();
+            output.WriteLine($"Second message: \"{curMessage}\"");
+            Assert.Equal("Testing the queue-", curMessage);
+        }
     }
 }

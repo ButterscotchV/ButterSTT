@@ -18,7 +18,7 @@ namespace ButterSTT.TextProcessing
         {
             Word[] words = WordOnlyCompleteKeepUrl()
                 .Matches(text)
-                .Select(m => new Word(m.Value))
+                .Select(m => new Word(m.Value.EndsWith(' ') ? m.Value : m.Value + " "))
                 .ToArray();
             return new Sentence(words);
         }
