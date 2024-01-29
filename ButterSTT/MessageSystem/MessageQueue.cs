@@ -83,7 +83,14 @@ namespace ButterSTT.MessageSystem
             )
             {
                 var word = WordQueue.Dequeue();
-                MessageWordQueue.Enqueue(new MessageWord(word, DateTime.UtcNow + WordTime));
+                MessageWordQueue.Enqueue(
+                    new MessageWord(
+                        word,
+                        WordTime >= TimeSpan.MaxValue
+                            ? DateTime.MaxValue
+                            : DateTime.UtcNow + WordTime
+                    )
+                );
                 CurMessageLength += word.Length;
             }
 
@@ -93,17 +100,24 @@ namespace ButterSTT.MessageSystem
                 // If there's no message to display besides the one in progress, display what we have now
                 if (MessageWordQueue.Count <= 0)
                 {
-                    return CurParagraph
-                        .Sentences.SelectMany(x => x.Words, (x, y) => y.Text)
-                        .Aggregate("", (x, y) => x + y)
+                    return string.Concat(
+                            CurParagraph.Sentences.SelectMany(x => x.Words, (x, y) => y.Text)
+                        )
+                        .Trim();
+                }
+                else if (CurParagraph.Length <= MessageLength - CurMessageLength)
+                {
+                    return string.Concat(
+                            string.Concat(MessageWordQueue.Select(w => w.Text)),
+                            string.Concat(
+                                CurParagraph.Sentences.SelectMany(x => x.Words, (x, y) => y.Text)
+                            )
+                        )
                         .Trim();
                 }
             }
 
-            var message = MessageWordQueue
-                .Select(w => w.Text)
-                .Aggregate("", (x, y) => x + y)
-                .Trim();
+            var message = string.Concat(MessageWordQueue.Select(w => w.Text)).Trim();
             return $"{message}{(WordQueue.Count > 0 ? "-" : "")}";
         }
     }

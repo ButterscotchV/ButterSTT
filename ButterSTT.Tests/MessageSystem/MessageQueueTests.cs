@@ -95,7 +95,6 @@ namespace ButterSTT.MessageSystem.Tests
             Assert.Equal(fourthMessage, curMessage);
         }
 
-        // Not yet implemented, should fail
         [Fact()]
         public void RealtimeAppendingTest()
         {
