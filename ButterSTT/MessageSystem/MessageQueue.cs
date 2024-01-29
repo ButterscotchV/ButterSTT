@@ -75,6 +75,22 @@ namespace ButterSTT.MessageSystem
                 }
             }
 
+            // If there's no queue and there's new words to display
+            if (WordQueue.Count <= 0 && CurParagraph.Length > 0)
+            {
+                // Fit the whole current paragraph in the message if possible
+                if (CurParagraph.Length <= MessageLength - CurMessageLength)
+                {
+                    return string.Concat(
+                            string.Concat(MessageWordQueue.Select(w => w.Text)),
+                            string.Concat(
+                                CurParagraph.Sentences.SelectMany(x => x.Words, (x, y) => y.Text)
+                            )
+                        )
+                        .Trim();
+                }
+            }
+
             // Make sure there is enough room to fit a new word in the message and
             // allow space for a dash after the current text if there is already more
             while (
@@ -92,22 +108,6 @@ namespace ButterSTT.MessageSystem
                     )
                 );
                 CurMessageLength += word.Length;
-            }
-
-            // If there's no queue and there's new words to display
-            if (WordQueue.Count <= 0 && CurParagraph.Length > 0)
-            {
-                // Fit the whole current paragraph in the message if possible
-                if (CurParagraph.Length <= MessageLength - CurMessageLength)
-                {
-                    return string.Concat(
-                            string.Concat(MessageWordQueue.Select(w => w.Text)),
-                            string.Concat(
-                                CurParagraph.Sentences.SelectMany(x => x.Words, (x, y) => y.Text)
-                            )
-                        )
-                        .Trim();
-                }
             }
 
             var message = string.Concat(MessageWordQueue.Select(w => w.Text)).Trim();
