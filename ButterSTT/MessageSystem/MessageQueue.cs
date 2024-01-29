@@ -4,8 +4,24 @@ namespace ButterSTT.MessageSystem
 {
     public class MessageQueue
     {
+        /// <summary>
+        /// The maximum length of the message. Default is 144.
+        /// </summary>
         public int MessageLength = 144;
+
+        /// <summary>
+        /// The maximum number of words to dequeue at once, regardless of their expiration time. Default is 6.
+        /// </summary>
         public int MaxWordsDequeued = 6;
+
+        /// <summary>
+        /// The number of characters to allow between the current paragraph and the message length. Default is 36.
+        /// </summary>
+        public int RealtimeQueuePadding = 36;
+
+        /// <summary>
+        /// The amount of time before a word will expire.
+        /// </summary>
         public TimeSpan WordTime = TimeSpan.FromSeconds(3);
 
         public Paragraph CurParagraph;
@@ -100,10 +116,15 @@ namespace ButterSTT.MessageSystem
 
         private void ProgressWordQueue()
         {
-            // Make sure there is enough room to fit a new word in the message
+            // Make sure there is enough room to fit a new word in the message,
+            // if the word is too long then just give up and pass it in anyways
+            // TODO: Maybe handle long words better? Or maybe it's not worthwhile
             while (
                 WordQueue.TryPeek(out var newWord)
-                && CurMessageLength + newWord.Length < MessageLength
+                && (
+                    CurMessageLength + newWord.Length <= MessageLength
+                    || newWord.Length > MessageLength
+                )
             )
             {
                 var word = WordQueue.Dequeue();
@@ -136,10 +157,7 @@ namespace ButterSTT.MessageSystem
             }
 
             if (CurParagraph.Length >= MessageLength)
-            {
-                // Queue with a padding of the max words times the average word length
-                QueueParagraphToFit(MaxWordsDequeued * 6);
-            }
+                QueueParagraphToFit(RealtimeQueuePadding);
 
             ProgressWordQueue();
 
