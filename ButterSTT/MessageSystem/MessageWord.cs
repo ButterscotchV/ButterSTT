@@ -3,12 +3,12 @@ namespace ButterSTT.MessageSystem
     public readonly struct MessageWord
     {
         public readonly string Text;
-        public readonly DateTime DisplayTime;
+        public readonly DateTime ExpiryTime;
 
-        public MessageWord(string text, DateTime displayTime)
+        public MessageWord(string text, DateTime expiryTime)
         {
             Text = text;
-            DisplayTime = displayTime;
+            ExpiryTime = expiryTime;
         }
     }
 }

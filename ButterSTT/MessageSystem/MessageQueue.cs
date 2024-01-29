@@ -68,7 +68,7 @@ namespace ButterSTT.MessageSystem
                 while (
                     dequeueCount++ < MaxWordsDequeued
                     && MessageWordQueue.TryPeek(out var expiredWord)
-                    && DateTime.UtcNow - expiredWord.DisplayTime >= WordTime
+                    && DateTime.UtcNow >= expiredWord.ExpiryTime
                 )
                 {
                     CurMessageLength -= MessageWordQueue.Dequeue().Text.Length;
@@ -83,7 +83,7 @@ namespace ButterSTT.MessageSystem
             )
             {
                 var word = WordQueue.Dequeue();
-                MessageWordQueue.Enqueue(new MessageWord(word, DateTime.UtcNow));
+                MessageWordQueue.Enqueue(new MessageWord(word, DateTime.UtcNow + WordTime));
                 CurMessageLength += word.Length;
             }
 
