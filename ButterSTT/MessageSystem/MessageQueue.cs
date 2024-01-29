@@ -5,6 +5,7 @@ namespace ButterSTT.MessageSystem
     public class MessageQueue
     {
         public int MessageLength = 144;
+        public int MaxWordsDequeued = 6;
         public TimeSpan WordTime = TimeSpan.FromSeconds(3);
 
         public Paragraph CurParagraph;
@@ -63,8 +64,10 @@ namespace ButterSTT.MessageSystem
             // Remove expired words if more space is needed
             if (WordQueue.Count > 0 || CurParagraph.Length > 0)
             {
+                var dequeueCount = 0;
                 while (
-                    MessageWordQueue.TryPeek(out var expiredWord)
+                    dequeueCount++ < MaxWordsDequeued
+                    && MessageWordQueue.TryPeek(out var expiredWord)
                     && DateTime.UtcNow - expiredWord.DisplayTime >= WordTime
                 )
                 {
