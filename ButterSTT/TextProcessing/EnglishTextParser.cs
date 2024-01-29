@@ -9,7 +9,7 @@ namespace ButterSTT.TextProcessing
         {
             Sentence[] sentences = SentenceKeepUrl()
                 .Matches(text)
-                .Select(m => ParseSentence(m.Value.Trim()))
+                .Select(m => ParseSentence(m.Value))
                 .ToArray();
             return new Paragraph(sentences);
         }
