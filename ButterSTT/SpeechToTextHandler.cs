@@ -22,13 +22,19 @@ namespace ButterSTT
         // Output
         private readonly StringBuilder _consoleOutput = new();
         private readonly StringBuilder _aprilOutput = new();
-        private readonly OSCMessageHandler _oscHandler = new();
+        private readonly MessageQueue _messageQueue;
 
         public int WaveDeviceNumber { get; private set; } = 0;
         public bool MicrophoneRecording { get; private set; } = false;
 
-        public SpeechToTextHandler(string modelPath, int deviceNumber = 0)
+        public SpeechToTextHandler(
+            string modelPath,
+            MessageQueue messageQueue,
+            int deviceNumber = 0
+        )
         {
+            _messageQueue = messageQueue;
+
             // Load model
             _model = new AprilModel(modelPath);
             ModelPath = modelPath;
@@ -145,17 +151,15 @@ namespace ButterSTT
 
             if (result == AprilResultKind.FinalRecognition)
             {
-                _oscHandler.MessageQueue.CurParagraph = EnglishTextParser.ParseParagraph(
+                _messageQueue.CurParagraph = EnglishTextParser.ParseParagraph(
                     aprilOutputString,
                     wordRegex: EnglishTextParser.WordKeepUrl()
                 );
-                _oscHandler.MessageQueue.FinishCurrentParagraph();
+                _messageQueue.FinishCurrentParagraph();
             }
             else
             {
-                _oscHandler.MessageQueue.CurParagraph = EnglishTextParser.ParseParagraph(
-                    aprilOutputString
-                );
+                _messageQueue.CurParagraph = EnglishTextParser.ParseParagraph(aprilOutputString);
             }
 
             _consoleOutput.Append(aprilOutputString);

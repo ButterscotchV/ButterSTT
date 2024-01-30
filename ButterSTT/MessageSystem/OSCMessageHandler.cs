@@ -13,6 +13,8 @@ namespace ButterSTT.MessageSystem
         private CancellationTokenSource? _messageLoopCancelSource;
         private Task? _messageLoop;
 
+        private string _lastMessage = "";
+
         public bool IsLoopRunning => _messageLoop != null && !_messageLoop.IsCompleted;
 
         public void StartMessageLoop()
@@ -60,7 +62,7 @@ namespace ButterSTT.MessageSystem
             try
             {
                 var message = MessageQueue.GetCurrentMessage();
-                if (string.IsNullOrWhiteSpace(message))
+                if (string.IsNullOrWhiteSpace(message) || message == _lastMessage)
                     return;
 
                 var chatbox = OSCHandler.MakeChatboxInput(message);
@@ -76,6 +78,8 @@ namespace ButterSTT.MessageSystem
                         new OscBundle(0, chatbox, OSCHandler.MakeChatboxTyping(true))
                     );
                 }
+
+                _lastMessage = message;
             }
             catch (Exception ex)
             {

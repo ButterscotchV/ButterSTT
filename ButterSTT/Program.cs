@@ -1,4 +1,5 @@
 using ButterSTT;
+using ButterSTT.MessageSystem;
 
 // Setup model dir
 var modelsDir = Path.GetFullPath("Models");
@@ -13,7 +14,10 @@ var modelPath =
         $"Could not find any available AprilAsr models (*.april) in \"{modelsDir}\"."
     );
 
-using var speechToTextHandler = new SpeechToTextHandler(modelPath);
+var oscHandler = new OSCMessageHandler();
+oscHandler.StartMessageLoop();
+
+using var speechToTextHandler = new SpeechToTextHandler(modelPath, oscHandler.MessageQueue);
 speechToTextHandler.StartRecording();
 
 Console.ReadLine();
