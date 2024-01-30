@@ -1,5 +1,6 @@
 using System.Text;
 using AprilAsr;
+using ButterSTT.Config;
 using ButterSTT.MessageSystem;
 using ButterSTT.TextProcessing;
 using NAudio.Wave;
@@ -14,7 +15,7 @@ namespace ButterSTT
 
         // Model
         private readonly AprilModel _model;
-        public readonly string ModelPath;
+        public readonly FileInfo ModelFile;
 
         // Session
         private readonly AprilSession _session;
@@ -24,11 +25,12 @@ namespace ButterSTT
         private readonly StringBuilder _aprilOutput = new();
         private readonly MessageQueue _messageQueue;
 
-        public int WaveDeviceNumber { get; private set; } = 0;
+        public int WaveDeviceNumber { get; private set; } =
+            STTConfig.Default.MicrophoneDeviceNumber;
         public bool MicrophoneRecording { get; private set; } = false;
 
         public SpeechToTextHandler(
-            string modelPath,
+            FileInfo modelFile,
             MessageQueue messageQueue,
             int deviceNumber = 0
         )
@@ -36,11 +38,11 @@ namespace ButterSTT
             _messageQueue = messageQueue;
 
             // Load model
-            _model = new AprilModel(modelPath);
-            ModelPath = modelPath;
+            _model = new AprilModel(modelFile.FullName);
+            ModelFile = modelFile;
 
             Console.WriteLine(
-                $"Model loaded from \"{modelPath}\":\n  > Name: {_model.Name}\n  > Description: {_model.Description}\n  > Language: {_model.Language}\n  > Sample Rate: {_model.SampleRate} Hz"
+                $"Model loaded from \"{modelFile.FullName}\":\n  > Name: {_model.Name}\n  > Description: {_model.Description}\n  > Language: {_model.Language}\n  > Sample Rate: {_model.SampleRate} Hz"
             );
 
             // Initialize session

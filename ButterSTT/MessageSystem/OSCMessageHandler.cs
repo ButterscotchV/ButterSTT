@@ -1,19 +1,43 @@
 using System.Diagnostics;
+using ButterSTT.Config;
 using CoreOSC;
 
 namespace ButterSTT.MessageSystem
 {
     public class OSCMessageHandler
     {
-        public TimeSpan RateLimit = TimeSpan.FromSeconds(1.3);
+        public TimeSpan RateLimit = STTConfig.Default.OSCChatboxRateLimit;
 
-        public readonly MessageQueue MessageQueue = new();
-        private readonly OSCHandler _oscHandler = new();
+        public readonly MessageQueue MessageQueue;
+        private OSCHandler _oscHandler;
 
         private CancellationTokenSource? _messageLoopCancelSource;
         private Task? _messageLoop;
 
         private string _lastMessage = "";
+
+        public OSCMessageHandler(
+            MessageQueue? messageQueue = null,
+            string? oscAddress = null,
+            int? oscPort = null
+        )
+        {
+            MessageQueue = messageQueue ?? new();
+            _oscHandler = MakeOSCHandler(oscAddress, oscPort);
+        }
+
+        private static OSCHandler MakeOSCHandler(string? oscAddress = null, int? oscPort = null)
+        {
+            return new(
+                oscAddress ?? STTConfig.Default.OSCAddress,
+                oscPort ?? STTConfig.Default.OSCPort
+            );
+        }
+
+        public void SetOSCEndpoint(string? oscAddress = null, int? oscPort = null)
+        {
+            _oscHandler = MakeOSCHandler(oscAddress, oscPort);
+        }
 
         public bool IsLoopRunning => _messageLoop != null && !_messageLoop.IsCompleted;
 
@@ -32,14 +56,14 @@ namespace ButterSTT.MessageSystem
             if (!IsLoopRunning)
                 return;
 
-            var messageLoop = this._messageLoop;
+            var messageLoop = _messageLoop;
             if (messageLoop == null)
                 return;
 
             _messageLoopCancelSource?.Cancel();
             await messageLoop.WaitAsync(cancelToken);
-            this._messageLoop = null;
-            this._messageLoopCancelSource = null;
+            _messageLoop = null;
+            _messageLoopCancelSource = null;
         }
 
         private async Task MessageLoop(CancellationToken cancelToken)

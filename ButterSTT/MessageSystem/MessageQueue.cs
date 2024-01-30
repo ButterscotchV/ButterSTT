@@ -1,3 +1,4 @@
+using ButterSTT.Config;
 using ButterSTT.TextProcessing.TextParts;
 
 namespace ButterSTT.MessageSystem
@@ -5,29 +6,29 @@ namespace ButterSTT.MessageSystem
     public class MessageQueue
     {
         /// <summary>
-        /// The maximum length of the message. Default is 144.
+        /// The maximum length of the message.
         /// </summary>
-        public int MessageLength = 144;
+        public int MessageLength = STTConfig.Default.MessageLength;
 
         /// <summary>
-        /// The maximum number of words to dequeue at once, regardless of their expiration time. Default is 6.
+        /// The maximum number of words to dequeue at once, regardless of their expiration time.
         /// </summary>
-        public int MaxWordsDequeued = 6;
+        public int MaxWordsDequeued = STTConfig.Default.MaxWordsDequeued;
 
         /// <summary>
-        /// The number of characters to allow between the current paragraph and the message length. Default is 36.
+        /// The number of characters to allow between the current paragraph and the message length.
         /// </summary>
-        public int RealtimeQueuePadding = 36;
+        public int RealtimeQueuePadding = STTConfig.Default.RealtimeQueuePadding;
 
         /// <summary>
-        /// The amount of time before a word will expire. Default is 3 seconds.
+        /// The amount of time before a word will expire.
         /// </summary>
-        public TimeSpan WordTime = TimeSpan.FromSeconds(3);
+        public TimeSpan WordTime = STTConfig.Default.WordTime;
 
         /// <summary>
-        /// The amount of time before a word will expire, being dequeued regardless of <see cref="MaxWordsDequeued"/>. Default is 30 seconds.
+        /// The amount of time before a word will expire, being dequeued regardless of <see cref="MaxWordsDequeued"/>.
         /// </summary>
-        public TimeSpan HardWordTime = TimeSpan.FromSeconds(30);
+        public TimeSpan HardWordTime = STTConfig.Default.HardWordTime;
 
         private readonly object _syncParagraph = new();
         public Paragraph _curParagraph;
