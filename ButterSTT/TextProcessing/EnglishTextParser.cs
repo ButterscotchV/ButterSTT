@@ -5,20 +5,31 @@ namespace ButterSTT.TextProcessing
 {
     public static partial class EnglishTextParser
     {
-        public static Paragraph ParseParagraph(string text)
+        public static Paragraph ParseParagraph(
+            string text,
+            Regex? regex = null,
+            Regex? wordRegex = null,
+            bool addSpaces = true
+        )
         {
-            Sentence[] sentences = SentenceKeepUrl()
+            Sentence[] sentences = (regex ?? SentenceKeepUrl())
                 .Matches(text)
-                .Select(m => ParseSentence(m.Value))
+                .Select(m => ParseSentence(m.Value, regex: wordRegex, addSpaces: addSpaces))
                 .ToArray();
             return new Paragraph(sentences);
         }
 
-        public static Sentence ParseSentence(string text)
+        public static Sentence ParseSentence(
+            string text,
+            Regex? regex = null,
+            bool addSpaces = true
+        )
         {
-            Word[] words = WordOnlyCompleteKeepUrl()
+            Word[] words = (regex ?? WordOnlyCompleteKeepUrl())
                 .Matches(text)
-                .Select(m => new Word(m.Value.EndsWith(' ') ? m.Value : m.Value + " "))
+                .Select(m => new Word(
+                    addSpaces && !m.Value.EndsWith(' ') ? m.Value + " " : m.Value
+                ))
                 .ToArray();
             return new Sentence(words);
         }

@@ -147,9 +147,20 @@ namespace ButterSTT
                     ? EnglishCapitalization.Capitalize(aprilOutput.ToString().Trim())
                     : "";
 
-            messageQueue.CurParagraph = EnglishTextParser.ParseParagraph(aprilOutputString);
             if (result == AprilResultKind.FinalRecognition)
+            {
+                messageQueue.CurParagraph = EnglishTextParser.ParseParagraph(
+                    aprilOutputString,
+                    wordRegex: EnglishTextParser.WordKeepUrl()
+                );
                 messageQueue.FinishCurrentParagraph();
+            }
+            else
+            {
+                messageQueue.CurParagraph = EnglishTextParser.ParseParagraph(aprilOutputString);
+            }
+
+            Console.WriteLine(messageQueue.GetCurrentMessage());
 
             try
             {
