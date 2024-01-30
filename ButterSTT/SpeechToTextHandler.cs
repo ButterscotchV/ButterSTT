@@ -2,7 +2,6 @@ using System.Text;
 using AprilAsr;
 using ButterSTT.MessageSystem;
 using ButterSTT.TextProcessing;
-using CoreOSC;
 using NAudio.Wave;
 
 namespace ButterSTT
@@ -10,23 +9,20 @@ namespace ButterSTT
     public class SpeechToTextHandler : IDisposable
     {
         // Audio
-        private readonly WaveInEvent AudioIn;
-        private bool RestartRecordingNextStop = false;
+        private readonly WaveInEvent _audioIn;
+        private bool _restartRecordingNextStop = false;
 
         // Model
-        private readonly AprilModel Model;
+        private readonly AprilModel _model;
         public readonly string ModelPath;
 
         // Session
-        private readonly AprilSession Session;
+        private readonly AprilSession _session;
 
         // Output
-        private readonly StringBuilder consoleOutput = new();
-        private readonly StringBuilder aprilOutput = new();
-        private readonly MessageQueue messageQueue = new();
-        private readonly OSCHandler oscHandler = new();
-
-        private DateTime lastMessage = DateTime.Now;
+        private readonly StringBuilder _consoleOutput = new();
+        private readonly StringBuilder _aprilOutput = new();
+        private readonly OSCMessageHandler _oscHandler = new();
 
         public int WaveDeviceNumber { get; private set; } = 0;
         public bool MicrophoneRecording { get; private set; } = false;
@@ -34,48 +30,48 @@ namespace ButterSTT
         public SpeechToTextHandler(string modelPath, int deviceNumber = 0)
         {
             // Load model
-            Model = new AprilModel(modelPath);
+            _model = new AprilModel(modelPath);
             ModelPath = modelPath;
 
             Console.WriteLine(
-                $"Model loaded from \"{modelPath}\":\n  > Name: {Model.Name}\n  > Description: {Model.Description}\n  > Language: {Model.Language}\n  > Sample Rate: {Model.SampleRate} Hz"
+                $"Model loaded from \"{modelPath}\":\n  > Name: {_model.Name}\n  > Description: {_model.Description}\n  > Language: {_model.Language}\n  > Sample Rate: {_model.SampleRate} Hz"
             );
 
             // Initialize session
-            Session = new AprilSession(Model, OnAprilTokens, async: true);
+            _session = new AprilSession(_model, OnAprilTokens, async: true);
 
             // Initialize microphone
-            AudioIn = new WaveInEvent()
+            _audioIn = new WaveInEvent()
             {
                 DeviceNumber = deviceNumber,
-                WaveFormat = new(Model.SampleRate, 16, 1)
+                WaveFormat = new(_model.SampleRate, 16, 1)
             };
             WaveDeviceNumber = deviceNumber;
 
             // Register microphone events
-            AudioIn.DataAvailable += OnMicData;
-            AudioIn.RecordingStopped += OnMicStop;
+            _audioIn.DataAvailable += OnMicData;
+            _audioIn.RecordingStopped += OnMicStop;
         }
 
         public void StartRecording()
         {
-            AudioIn.StartRecording();
+            _audioIn.StartRecording();
             MicrophoneRecording = true;
         }
 
         public void StopRecording()
         {
             // Tell the recording not to restart
-            RestartRecordingNextStop = false;
+            _restartRecordingNextStop = false;
 
             // This keeps recording for a little bit longer, it will call the event when it's done
-            AudioIn.StopRecording();
+            _audioIn.StopRecording();
         }
 
         public void SwapMicrophoneDevice(int deviceNumber)
         {
             // If it's already using this device, ignore it and continue
-            if (AudioIn.DeviceNumber == deviceNumber)
+            if (_audioIn.DeviceNumber == deviceNumber)
                 return;
 
             var wasRecording = MicrophoneRecording;
@@ -84,7 +80,7 @@ namespace ButterSTT
             StopRecording();
 
             // Swap devices
-            AudioIn.DeviceNumber = deviceNumber;
+            _audioIn.DeviceNumber = deviceNumber;
             WaveDeviceNumber = deviceNumber;
 
             // If it's already stopped, restart it immediately
@@ -95,7 +91,7 @@ namespace ButterSTT
             }
             else
             {
-                RestartRecordingNextStop = true;
+                _restartRecordingNextStop = true;
             }
         }
 
@@ -107,107 +103,69 @@ namespace ButterSTT
             // Convert the bytes to shorts
             var shorts = new short[args.BytesRecorded / sizeof(short)];
             Buffer.BlockCopy(args.Buffer, 0, shorts, 0, args.BytesRecorded);
-            Session.FeedPCM16(shorts, shorts.Length);
+            _session.FeedPCM16(shorts, shorts.Length);
         }
 
         private void OnMicStop(object? sender, StoppedEventArgs args)
         {
-            Session.Flush();
+            _session.Flush();
             MicrophoneRecording = false;
 
-            if (RestartRecordingNextStop)
+            if (_restartRecordingNextStop)
                 StartRecording();
         }
 
         private void OnAprilTokens(AprilResultKind result, AprilToken[] tokens)
         {
-            consoleOutput.Clear();
-            aprilOutput.Clear();
+            _consoleOutput.Clear();
+            _aprilOutput.Clear();
 
             switch (result)
             {
                 case AprilResultKind.PartialRecognition:
-                    consoleOutput.Append("- ");
+                    _consoleOutput.Append("- ");
                     break;
                 case AprilResultKind.FinalRecognition:
-                    consoleOutput.Append("@ ");
+                    _consoleOutput.Append("@ ");
                     break;
                 default:
-                    consoleOutput.Append(' ');
+                    _consoleOutput.Append(' ');
                     break;
             }
 
             foreach (AprilToken token in tokens)
             {
-                aprilOutput.Append(token.Token);
+                _aprilOutput.Append(token.Token);
             }
 
             var aprilOutputString =
                 tokens.Length > 0
-                    ? EnglishCapitalization.Capitalize(aprilOutput.ToString().Trim())
+                    ? EnglishCapitalization.Capitalize(_aprilOutput.ToString().Trim())
                     : "";
 
             if (result == AprilResultKind.FinalRecognition)
             {
-                messageQueue.CurParagraph = EnglishTextParser.ParseParagraph(
+                _oscHandler.MessageQueue.CurParagraph = EnglishTextParser.ParseParagraph(
                     aprilOutputString,
                     wordRegex: EnglishTextParser.WordKeepUrl()
                 );
-                messageQueue.FinishCurrentParagraph();
+                _oscHandler.MessageQueue.FinishCurrentParagraph();
             }
             else
             {
-                messageQueue.CurParagraph = EnglishTextParser.ParseParagraph(aprilOutputString);
+                _oscHandler.MessageQueue.CurParagraph = EnglishTextParser.ParseParagraph(
+                    aprilOutputString
+                );
             }
 
-            Console.WriteLine(messageQueue.GetCurrentMessage());
-
-            try
-            {
-                if (tokens.Length > 0 && !string.IsNullOrWhiteSpace(aprilOutputString))
-                {
-                    // Only print if at the end of a word or sentence, we don't want to print incomplete words
-                    var lastToken = tokens.Last();
-                    if (
-                        (lastToken.WordBoundary || lastToken.SentenceEnd)
-                        && (DateTime.Now - lastMessage).TotalSeconds > 1.3d
-                    )
-                    {
-                        lastMessage = DateTime.Now;
-                        if (result != AprilResultKind.FinalRecognition)
-                        {
-                            // Still typing the message... Show as typing!
-                            oscHandler.OSCSender.Send(
-                                new OscBundle(
-                                    0,
-                                    OSCHandler.MakeChatboxInput(aprilOutputString),
-                                    OSCHandler.MakeChatboxTyping(true)
-                                )
-                            );
-                        }
-                        else
-                        {
-                            // Just send the message, no more typing
-                            oscHandler.OSCSender.Send(
-                                OSCHandler.MakeChatboxInput(aprilOutputString)
-                            );
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-
-            consoleOutput.Append(aprilOutputString);
-            Console.WriteLine(consoleOutput);
+            _consoleOutput.Append(aprilOutputString);
+            Console.WriteLine(_consoleOutput);
         }
 
         public void Dispose()
         {
             StopRecording();
-            AudioIn.Dispose();
+            _audioIn.Dispose();
             GC.SuppressFinalize(this);
         }
     }

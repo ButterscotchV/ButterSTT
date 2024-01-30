@@ -6,11 +6,11 @@ namespace ButterSTT.MessageSystem.Tests
 {
     public class MessageQueueTests
     {
-        private readonly ITestOutputHelper output;
+        private readonly ITestOutputHelper _output;
 
         public MessageQueueTests(ITestOutputHelper output)
         {
-            this.output = output;
+            _output = output;
         }
 
         [Fact()]
@@ -27,14 +27,14 @@ namespace ButterSTT.MessageSystem.Tests
             queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
             queue.FinishCurrentParagraph();
             var curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"First message: \"{curMessage}\"");
+            _output.WriteLine($"First message: \"{curMessage}\"");
             Assert.Equal(firstMessage, curMessage);
 
             var secondMessage = "Second test message.";
             queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
             queue.FinishCurrentParagraph();
             curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Second message: \"{curMessage}\"");
+            _output.WriteLine($"Second message: \"{curMessage}\"");
             Assert.Equal(secondMessage, curMessage);
         }
 
@@ -56,7 +56,7 @@ namespace ButterSTT.MessageSystem.Tests
             queue.FinishCurrentParagraph();
 
             var curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Combined message: \"{curMessage}\"");
+            _output.WriteLine($"Combined message: \"{curMessage}\"");
             Assert.Equal($"{firstMessage} {secondMessage}", curMessage);
         }
 
@@ -74,14 +74,14 @@ namespace ButterSTT.MessageSystem.Tests
             queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
             queue.FinishCurrentParagraph();
             var curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"First message: \"{curMessage}\"");
+            _output.WriteLine($"First message: \"{curMessage}\"");
             Assert.Equal(firstMessage, curMessage);
 
             var secondMessage = "Second test message.";
             queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
             queue.FinishCurrentParagraph();
             curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Second message: \"{curMessage}\"");
+            _output.WriteLine($"Second message: \"{curMessage}\"");
             Assert.Equal($"queue system. {secondMessage}", curMessage);
         }
 
@@ -99,14 +99,14 @@ namespace ButterSTT.MessageSystem.Tests
             queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
             queue.FinishCurrentParagraph();
             var curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"First message: \"{curMessage}\"");
+            _output.WriteLine($"First message: \"{curMessage}\"");
             Assert.Equal(firstMessage, curMessage);
 
             var secondMessage = "Second test message.";
             queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
             queue.FinishCurrentParagraph();
             curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Second message: \"{curMessage}\"");
+            _output.WriteLine($"Second message: \"{curMessage}\"");
             Assert.Equal(secondMessage, curMessage);
         }
 
@@ -123,28 +123,28 @@ namespace ButterSTT.MessageSystem.Tests
             // Likely incomplete word
             queue.CurParagraph = EnglishTextParser.ParseParagraph("Testing th");
             var curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"First message: \"{curMessage}\"");
+            _output.WriteLine($"First message: \"{curMessage}\"");
             Assert.Equal("Testing", curMessage);
 
             // Complete sentence
             var secondMessage = "Testing the queue system.";
             queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
             curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Second message: \"{curMessage}\"");
+            _output.WriteLine($"Second message: \"{curMessage}\"");
             Assert.Equal(secondMessage, curMessage);
 
             // Complete and partial sentence with one complete word
             var thirdMessage = "Testing the queue system. Second ";
             queue.CurParagraph = EnglishTextParser.ParseParagraph(thirdMessage);
             curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Third message: \"{curMessage}\"");
+            _output.WriteLine($"Third message: \"{curMessage}\"");
             Assert.Equal(thirdMessage.Trim(), curMessage);
 
             // Two complete sentences
             var fourthMessage = "Testing the queue system. Second test message.";
             queue.CurParagraph = EnglishTextParser.ParseParagraph(fourthMessage);
             curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Fourth message: \"{curMessage}\"");
+            _output.WriteLine($"Fourth message: \"{curMessage}\"");
             Assert.Equal(fourthMessage, curMessage);
         }
 
@@ -167,14 +167,14 @@ namespace ButterSTT.MessageSystem.Tests
             var secondMessage = "Second test ";
             queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
             var curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Appended message: \"{curMessage}\"");
+            _output.WriteLine($"Appended message: \"{curMessage}\"");
             Assert.Equal($"{firstMessage} {secondMessage.Trim()}", curMessage);
 
             // Replace the partial message
             var thirdMessage = "Second test message.";
             queue.CurParagraph = EnglishTextParser.ParseParagraph(thirdMessage);
             curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Appended message: \"{curMessage}\"");
+            _output.WriteLine($"Appended message: \"{curMessage}\"");
             Assert.Equal($"{firstMessage} {thirdMessage}", curMessage);
         }
 
@@ -198,7 +198,7 @@ namespace ButterSTT.MessageSystem.Tests
             var secondMessage = "Second test ";
             queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
             var curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Appended message: \"{curMessage}\"");
+            _output.WriteLine($"Appended message: \"{curMessage}\"");
             Assert.Equal($"{firstMessage} Second-", curMessage);
         }
 
@@ -215,12 +215,12 @@ namespace ButterSTT.MessageSystem.Tests
 
             queue.CurParagraph = EnglishTextParser.ParseParagraph("Testing th");
             var curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"First message: \"{curMessage}\"");
+            _output.WriteLine($"First message: \"{curMessage}\"");
             Assert.Equal("Testing", curMessage);
 
             queue.CurParagraph = EnglishTextParser.ParseParagraph("Testing the queue system.");
             curMessage = queue.GetCurrentMessage();
-            output.WriteLine($"Second message: \"{curMessage}\"");
+            _output.WriteLine($"Second message: \"{curMessage}\"");
             Assert.Equal("Testing the queue-", curMessage);
         }
     }

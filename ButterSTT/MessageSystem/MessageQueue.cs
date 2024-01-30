@@ -29,27 +29,33 @@ namespace ButterSTT.MessageSystem
         /// </summary>
         public TimeSpan HardWordTime = TimeSpan.FromSeconds(30);
 
+        private readonly object _syncParagraph = new();
         public Paragraph CurParagraph;
-        private (int sentence, int word) CurIndex;
+        private (int sentence, int word) _curIndex;
 
-        private readonly Queue<string> WordQueue = new();
-        private readonly Queue<MessageWord> MessageWordQueue = new();
-        private int CurMessageLength;
+        private readonly Queue<string> _wordQueue = new();
+        private readonly Queue<MessageWord> _messageWordQueue = new();
+        private int _curMessageLength;
+
+        public bool IsFinished => _wordQueue.Count <= 0 && CurParagraph.Length <= 0;
 
         private void InternLimitWordIndex()
         {
-            CurIndex.word = Math.Max(0, CurParagraph.Sentences[CurIndex.sentence].Words.Length - 1);
+            _curIndex.word = Math.Max(
+                0,
+                CurParagraph.Sentences[_curIndex.sentence].Words.Length - 1
+            );
         }
 
         public void LimitParagraphIndex()
         {
-            if (CurParagraph.Sentences.Length <= CurIndex.sentence)
+            if (CurParagraph.Sentences.Length <= _curIndex.sentence)
             {
                 // Move to the end of the last known position
-                CurIndex.sentence = Math.Max(0, CurParagraph.Sentences.Length - 1);
+                _curIndex.sentence = Math.Max(0, CurParagraph.Sentences.Length - 1);
                 InternLimitWordIndex();
             }
-            else if (CurParagraph.Sentences[CurIndex.sentence].Length <= CurIndex.word)
+            else if (CurParagraph.Sentences[_curIndex.sentence].Length <= _curIndex.word)
             {
                 InternLimitWordIndex();
             }
@@ -61,11 +67,11 @@ namespace ButterSTT.MessageSystem
             LimitParagraphIndex();
 
             // Queue all words after the current displayed ones
-            for (var s = CurIndex.sentence; s < CurParagraph.Sentences.Length; s++)
+            for (var s = _curIndex.sentence; s < CurParagraph.Sentences.Length; s++)
             {
                 var sentence = CurParagraph.Sentences[s];
                 for (
-                    var w = s <= CurIndex.sentence ? CurIndex.word : 0;
+                    var w = s <= _curIndex.sentence ? _curIndex.word : 0;
                     w < sentence.Words.Length;
                     w++
                 )
@@ -80,12 +86,12 @@ namespace ButterSTT.MessageSystem
             // Queue all words after the current displayed ones
             foreach (var word in ParagraphWordEnumerator())
             {
-                WordQueue.Enqueue(word);
+                _wordQueue.Enqueue(word);
             }
 
             // Reset states
             CurParagraph = default;
-            CurIndex = default;
+            _curIndex = default;
         }
 
         public int ParagraphLengthFromIndex() => ParagraphWordEnumerator().Sum(w => w.Length);
@@ -97,23 +103,23 @@ namespace ButterSTT.MessageSystem
 
             var paragraphLen = ParagraphLengthFromIndex();
             // Queue as few words after the current displayed ones
-            for (var s = CurIndex.sentence; s < CurParagraph.Sentences.Length; s++)
+            for (var s = _curIndex.sentence; s < CurParagraph.Sentences.Length; s++)
             {
                 var sentence = CurParagraph.Sentences[s];
                 for (
-                    var w = s <= CurIndex.sentence ? CurIndex.word : 0;
+                    var w = s <= _curIndex.sentence ? _curIndex.word : 0;
                     w < sentence.Words.Length;
                     w++
                 )
                 {
                     if (paragraphLen <= MessageLength - padding)
                     {
-                        CurIndex = (s, w);
+                        _curIndex = (s, w);
                         return;
                     }
 
                     var word = sentence.Words[w].Text;
-                    WordQueue.Enqueue(word);
+                    _wordQueue.Enqueue(word);
                     paragraphLen -= word.Length;
                 }
             }
@@ -128,33 +134,33 @@ namespace ButterSTT.MessageSystem
             // if the word is too long then just give up and pass it in anyways
             // TODO: Maybe handle long words better? Or maybe it's not worthwhile
             while (
-                WordQueue.TryPeek(out var newWord)
+                _wordQueue.TryPeek(out var newWord)
                 && (
-                    CurMessageLength + newWord.Length <= MessageLength
+                    _curMessageLength + newWord.Length <= MessageLength
                     || newWord.Length > MessageLength
                 )
             )
             {
-                var word = WordQueue.Dequeue();
-                MessageWordQueue.Enqueue(
+                var word = _wordQueue.Dequeue();
+                _messageWordQueue.Enqueue(
                     new MessageWord(
                         word,
                         ComputeExpiration(WordTime),
                         ComputeExpiration(HardWordTime)
                     )
                 );
-                CurMessageLength += word.Length;
+                _curMessageLength += word.Length;
             }
         }
 
         public string GetCurrentMessage()
         {
             // Remove expired words if more space is needed
-            if (WordQueue.Count > 0 || CurParagraph.Length > 0)
+            if (_wordQueue.Count > 0 || CurParagraph.Length > 0)
             {
                 var dequeueCount = 0;
                 while (
-                    MessageWordQueue.TryPeek(out var expiredWord)
+                    _messageWordQueue.TryPeek(out var expiredWord)
                     && (
                         (
                             dequeueCount < MaxWordsDequeued
@@ -164,7 +170,7 @@ namespace ButterSTT.MessageSystem
                     )
                 )
                 {
-                    CurMessageLength -= MessageWordQueue.Dequeue().Text.Length;
+                    _curMessageLength -= _messageWordQueue.Dequeue().Text.Length;
                     dequeueCount++;
                 }
             }
@@ -174,12 +180,12 @@ namespace ButterSTT.MessageSystem
 
             ProgressWordQueue();
 
-            var message = string.Concat(MessageWordQueue.Select(w => w.Text));
+            var message = string.Concat(_messageWordQueue.Select(w => w.Text));
 
             // If there's no queue and there's new words to display
-            if (WordQueue.Count <= 0 && CurParagraph.Length > 0)
+            if (_wordQueue.Count <= 0 && CurParagraph.Length > 0)
             {
-                var availableLength = MessageLength - CurMessageLength;
+                var availableLength = MessageLength - _curMessageLength;
                 var totalTaken = 0;
                 var paragraph = string.Concat(
                     ParagraphWordEnumerator()
@@ -197,7 +203,7 @@ namespace ButterSTT.MessageSystem
                 return (message + paragraph).Trim() + (CurParagraph.Length > totalTaken ? "-" : "");
             }
 
-            return message.Trim() + (WordQueue.Count > 0 ? "-" : "");
+            return message.Trim() + (_wordQueue.Count > 0 ? "-" : "");
         }
     }
 }
