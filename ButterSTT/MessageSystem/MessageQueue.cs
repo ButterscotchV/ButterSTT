@@ -30,97 +30,137 @@ namespace ButterSTT.MessageSystem
         public TimeSpan HardWordTime = TimeSpan.FromSeconds(30);
 
         private readonly object _syncParagraph = new();
-        public Paragraph CurParagraph;
+        public Paragraph _curParagraph;
         private (int sentence, int word) _curIndex;
+
+        public Paragraph CurParagraph
+        {
+            get
+            {
+                lock (_syncParagraph)
+                    return _curParagraph;
+            }
+            set
+            {
+                lock (_syncParagraph)
+                    _curParagraph = value;
+            }
+        }
 
         private readonly Queue<string> _wordQueue = new();
         private readonly Queue<MessageWord> _messageWordQueue = new();
         private int _curMessageLength;
 
-        public bool IsFinished => _wordQueue.Count <= 0 && CurParagraph.Length <= 0;
+        public bool IsFinished
+        {
+            get
+            {
+                lock (_syncParagraph)
+                    return _wordQueue.Count <= 0 && _curParagraph.Length <= 0;
+            }
+        }
 
         private void InternLimitWordIndex()
         {
-            _curIndex.word = Math.Max(
-                0,
-                CurParagraph.Sentences[_curIndex.sentence].Words.Length - 1
-            );
+            lock (_syncParagraph)
+            {
+                _curIndex.word = Math.Max(
+                    0,
+                    _curParagraph.Sentences[_curIndex.sentence].Words.Length - 1
+                );
+            }
         }
 
         public void LimitParagraphIndex()
         {
-            if (CurParagraph.Sentences.Length <= _curIndex.sentence)
+            lock (_syncParagraph)
             {
-                // Move to the end of the last known position
-                _curIndex.sentence = Math.Max(0, CurParagraph.Sentences.Length - 1);
-                InternLimitWordIndex();
-            }
-            else if (CurParagraph.Sentences[_curIndex.sentence].Length <= _curIndex.word)
-            {
-                InternLimitWordIndex();
+                if (_curParagraph.Sentences.Length <= _curIndex.sentence)
+                {
+                    // Move to the end of the last known position
+                    _curIndex.sentence = Math.Max(0, _curParagraph.Sentences.Length - 1);
+                    InternLimitWordIndex();
+                }
+                else if (_curParagraph.Sentences[_curIndex.sentence].Length <= _curIndex.word)
+                {
+                    InternLimitWordIndex();
+                }
             }
         }
 
         public IEnumerable<string> ParagraphWordEnumerator()
         {
-            // Limit the index if length has changed since last known
-            LimitParagraphIndex();
-
-            // Queue all words after the current displayed ones
-            for (var s = _curIndex.sentence; s < CurParagraph.Sentences.Length; s++)
+            lock (_syncParagraph)
             {
-                var sentence = CurParagraph.Sentences[s];
-                for (
-                    var w = s <= _curIndex.sentence ? _curIndex.word : 0;
-                    w < sentence.Words.Length;
-                    w++
-                )
+                // Limit the index if length has changed since last known
+                LimitParagraphIndex();
+
+                // Queue all words after the current displayed ones
+                for (var s = _curIndex.sentence; s < _curParagraph.Sentences.Length; s++)
                 {
-                    yield return sentence.Words[w].Text;
+                    var sentence = _curParagraph.Sentences[s];
+                    for (
+                        var w = s <= _curIndex.sentence ? _curIndex.word : 0;
+                        w < sentence.Words.Length;
+                        w++
+                    )
+                    {
+                        yield return sentence.Words[w].Text;
+                    }
                 }
             }
         }
 
         public void FinishCurrentParagraph()
         {
-            // Queue all words after the current displayed ones
-            foreach (var word in ParagraphWordEnumerator())
+            lock (_syncParagraph)
             {
-                _wordQueue.Enqueue(word);
-            }
+                // Queue all words after the current displayed ones
+                foreach (var word in ParagraphWordEnumerator())
+                {
+                    _wordQueue.Enqueue(word);
+                }
 
-            // Reset states
-            CurParagraph = default;
-            _curIndex = default;
+                // Reset states
+                _curParagraph = default;
+                _curIndex = default;
+            }
         }
 
-        public int ParagraphLengthFromIndex() => ParagraphWordEnumerator().Sum(w => w.Length);
+        public int ParagraphLengthFromIndex()
+        {
+            lock (_syncParagraph)
+                return ParagraphWordEnumerator().Sum(w => w.Length);
+        }
 
         public void QueueParagraphToFit(int padding = 0)
         {
-            // Limit the index if length has changed since last known
-            LimitParagraphIndex();
-
-            var paragraphLen = ParagraphLengthFromIndex();
-            // Queue as few words after the current displayed ones
-            for (var s = _curIndex.sentence; s < CurParagraph.Sentences.Length; s++)
+            lock (_syncParagraph)
             {
-                var sentence = CurParagraph.Sentences[s];
-                for (
-                    var w = s <= _curIndex.sentence ? _curIndex.word : 0;
-                    w < sentence.Words.Length;
-                    w++
-                )
-                {
-                    if (paragraphLen <= MessageLength - padding)
-                    {
-                        _curIndex = (s, w);
-                        return;
-                    }
+                // Limit the index if length has changed since last known
+                LimitParagraphIndex();
 
-                    var word = sentence.Words[w].Text;
-                    _wordQueue.Enqueue(word);
-                    paragraphLen -= word.Length;
+                var paragraphLen = ParagraphLengthFromIndex();
+                // Queue as few words after the current displayed ones
+                for (var s = _curIndex.sentence; s < _curParagraph.Sentences.Length; s++)
+                {
+                    var sentence = _curParagraph.Sentences[s];
+                    for (
+                        var w = s <= _curIndex.sentence ? _curIndex.word : 0;
+                        w < sentence.Words.Length;
+                        w++
+                    )
+                    {
+                        if (paragraphLen <= MessageLength - padding)
+                        {
+                            _curIndex = (s, w);
+                            return;
+                        }
+
+                        var word = sentence.Words[w].Text;
+                        _wordQueue.Enqueue(word);
+                        paragraphLen -= word.Length;
+                    }
                 }
             }
         }
@@ -155,55 +195,59 @@ namespace ButterSTT.MessageSystem
 
         public string GetCurrentMessage()
         {
-            // Remove expired words if more space is needed
-            if (_wordQueue.Count > 0 || CurParagraph.Length > 0)
+            lock (_syncParagraph)
             {
-                var dequeueCount = 0;
-                while (
-                    _messageWordQueue.TryPeek(out var expiredWord)
-                    && (
-                        (
-                            dequeueCount < MaxWordsDequeued
-                            && DateTime.UtcNow >= expiredWord.ExpiryTime
-                        )
-                        || DateTime.UtcNow >= expiredWord.HardExpiryTime
-                    )
-                )
+                // Remove expired words if more space is needed
+                if (_wordQueue.Count > 0 || _curParagraph.Length > 0)
                 {
-                    _curMessageLength -= _messageWordQueue.Dequeue().Text.Length;
-                    dequeueCount++;
+                    var dequeueCount = 0;
+                    while (
+                        _messageWordQueue.TryPeek(out var expiredWord)
+                        && (
+                            (
+                                dequeueCount < MaxWordsDequeued
+                                && DateTime.UtcNow >= expiredWord.ExpiryTime
+                            )
+                            || DateTime.UtcNow >= expiredWord.HardExpiryTime
+                        )
+                    )
+                    {
+                        _curMessageLength -= _messageWordQueue.Dequeue().Text.Length;
+                        dequeueCount++;
+                    }
                 }
-            }
 
-            if (CurParagraph.Length >= MessageLength)
-                QueueParagraphToFit(RealtimeQueuePadding);
+                if (_curParagraph.Length >= MessageLength)
+                    QueueParagraphToFit(RealtimeQueuePadding);
 
-            ProgressWordQueue();
+                ProgressWordQueue();
 
-            var message = string.Concat(_messageWordQueue.Select(w => w.Text));
+                var message = string.Concat(_messageWordQueue.Select(w => w.Text));
 
-            // If there's no queue and there's new words to display
-            if (_wordQueue.Count <= 0 && CurParagraph.Length > 0)
-            {
-                var availableLength = MessageLength - _curMessageLength;
-                var totalTaken = 0;
-                var paragraph = string.Concat(
-                    ParagraphWordEnumerator()
-                        .TakeWhile(w =>
-                        {
-                            if (totalTaken + w.Length <= availableLength)
+                // If there's no queue and there's new words to display
+                if (_wordQueue.Count <= 0 && _curParagraph.Length > 0)
+                {
+                    var availableLength = MessageLength - _curMessageLength;
+                    var totalTaken = 0;
+                    var paragraph = string.Concat(
+                        ParagraphWordEnumerator()
+                            .TakeWhile(w =>
                             {
-                                totalTaken += w.Length;
-                                return true;
-                            }
-                            else
-                                return false;
-                        })
-                );
-                return (message + paragraph).Trim() + (CurParagraph.Length > totalTaken ? "-" : "");
-            }
+                                if (totalTaken + w.Length <= availableLength)
+                                {
+                                    totalTaken += w.Length;
+                                    return true;
+                                }
+                                else
+                                    return false;
+                            })
+                    );
+                    return (message + paragraph).Trim()
+                        + (_curParagraph.Length > totalTaken ? "-" : "");
+                }
 
-            return message.Trim() + (_wordQueue.Count > 0 ? "-" : "");
+                return message.Trim() + (_wordQueue.Count > 0 ? "-" : "");
+            }
         }
     }
 }
