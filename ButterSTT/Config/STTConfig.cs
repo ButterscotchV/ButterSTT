@@ -6,6 +6,9 @@ namespace ButterSTT.Config
     {
         public static readonly STTConfig Default = new();
 
+        [JsonPropertyName("config_version")]
+        public int ConfigVersion { get; set; } = 0;
+
         [JsonPropertyName("models_path")]
         public string ModelsPath { get; set; } = "Models";
 
@@ -25,13 +28,13 @@ namespace ButterSTT.Config
         public int MessageLength { get; set; } = 144;
 
         [JsonPropertyName("max_words_dequeued")]
-        public int MaxWordsDequeued { get; set; } = 4;
+        public int MaxWordsDequeued { get; set; } = 10;
 
         [JsonPropertyName("realtime_queue_padding")]
         public int RealtimeQueuePadding { get; set; } = 24;
 
         [JsonPropertyName("word_time_s")]
-        public double WordTimeS { get; set; } = 4.0;
+        public double WordTimeS { get; set; } = 5.0;
 
         [JsonPropertyName("hard_word_time_s")]
         public double HardWordTimeS { get; set; } = 16.0;

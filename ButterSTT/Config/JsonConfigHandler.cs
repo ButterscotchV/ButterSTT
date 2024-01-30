@@ -16,10 +16,20 @@ namespace ButterSTT.Config
             return JsonSerializer.Deserialize(stream, typeInfo);
         }
 
+        public T? LoadConfig()
+        {
+            return LoadConfig(ConfigFilePath);
+        }
+
         public void WriteConfigUnsafe(string file, T config)
         {
             using var stream = new FileStream(file, FileMode.OpenOrCreate);
             JsonSerializer.Serialize(stream, config, typeInfo);
+        }
+
+        public void WriteConfigUnsafe(T config)
+        {
+            WriteConfigUnsafe(ConfigFilePath, config);
         }
 
         public static void AtomicFileOp(
@@ -43,6 +53,35 @@ namespace ButterSTT.Config
         public void WriteConfig(string file, T config)
         {
             AtomicFileOp(file, tempFile => WriteConfigUnsafe(tempFile, config), overwrite: true);
+        }
+
+        public void WriteConfig(T config)
+        {
+            WriteConfig(ConfigFilePath, config);
+        }
+
+        public void MakeBackup(string file, string backupFile)
+        {
+            try
+            {
+                AtomicFileOp(
+                    backupFile,
+                    tempFile => File.Copy(file, tempFile, overwrite: true),
+                    overwrite: true
+                );
+            }
+            catch (Exception e)
+            {
+                throw new JsonConfigException(
+                    $"Unable to back up the config file at \"{file}\" to \"{backupFile}\".",
+                    e
+                );
+            }
+        }
+
+        public void MakeBackup(string backupFile)
+        {
+            MakeBackup(ConfigFilePath, backupFile);
         }
 
         /// <summary>
@@ -69,25 +108,7 @@ namespace ButterSTT.Config
                     );
 
                     var backupFile = $"{ConfigFilePath}.bak";
-                    try
-                    {
-                        AtomicFileOp(
-                            backupFile,
-                            tempFile => File.Copy(ConfigFilePath, tempFile, overwrite: true),
-                            overwrite: true
-                        );
-                    }
-                    catch (Exception e2)
-                    {
-                        throw new AggregateException(
-                            new JsonConfigException(
-                                $"Unable to back up the config file at \"{ConfigFilePath}\" to \"{backupFile}\".",
-                                e2
-                            ),
-                            e
-                        );
-                    }
-
+                    MakeBackup(backupFile);
                     Console.WriteLine($"Backed up the current config file to \"{backupFile}\".");
 
                     // We shouldn't continue past this point as the config is required

@@ -7,6 +7,18 @@ JsonConfigHandler<STTConfig> configHandler =
     new("config.json", JsonConfigHandler<STTConfig>.Context.STTConfig);
 STTConfig config = configHandler.InitializeConfig(STTConfig.Default);
 
+// Fill in new values if the version changed
+if (config.ConfigVersion < STTConfig.Default.ConfigVersion)
+{
+    var backupFile = $"{configHandler.ConfigFilePath}.old";
+    configHandler.MakeBackup(backupFile);
+    Console.WriteLine(
+        $"Backed up the current config file to \"{backupFile}\", upgrading from v{config.ConfigVersion} to v{STTConfig.Default.ConfigVersion}..."
+    );
+    config.ConfigVersion = STTConfig.Default.ConfigVersion;
+    configHandler.WriteConfig(config);
+}
+
 // Setup model dir
 var modelsDir = new DirectoryInfo(config.ModelsPath);
 modelsDir.Create();
@@ -28,7 +40,7 @@ var modelFile =
 var messageQueue = new MessageQueue()
 {
     MessageLength = config.MessageLength,
-    MaxWordsDequeued = config.MaxWordsDequeued,
+    MaxWordsDequeued = config.MaxWordsDequeued < 0 ? int.MaxValue : config.MaxWordsDequeued,
     RealtimeQueuePadding = config.RealtimeQueuePadding,
     WordTime = config.WordTime,
     HardWordTime = config.HardWordTime,
