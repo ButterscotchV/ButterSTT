@@ -45,11 +45,7 @@ var messageQueue = new MessageQueue()
     WordTime = config.WordTime,
     HardWordTime = config.HardWordTime,
 };
-var oscHandler = new OSCMessageHandler(
-    messageQueue,
-    oscAddress: config.OSCAddress,
-    oscPort: config.OSCPort
-)
+using var oscHandler = new OSCMessageHandler(messageQueue, config.OSCEndpoint)
 {
     RateLimit = config.OSCChatboxRateLimit
 };

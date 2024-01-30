@@ -1,42 +1,32 @@
 using System.Diagnostics;
+using System.Net;
 using ButterSTT.Config;
-using CoreOSC;
+using LucHeart.CoreOSC;
 
 namespace ButterSTT.MessageSystem
 {
-    public class OSCMessageHandler
+    public class OSCMessageHandler : IDisposable
     {
         public TimeSpan RateLimit = STTConfig.Default.OSCChatboxRateLimit;
 
         public readonly MessageQueue MessageQueue;
-        private OSCHandler _oscHandler;
+        private OscSender _oscSender;
 
         private CancellationTokenSource? _messageLoopCancelSource;
         private Task? _messageLoop;
 
         private string _lastMessage = "";
 
-        public OSCMessageHandler(
-            MessageQueue? messageQueue = null,
-            string? oscAddress = null,
-            int? oscPort = null
-        )
+        public OSCMessageHandler(MessageQueue? messageQueue = null, IPEndPoint? ipEndPoint = null)
         {
             MessageQueue = messageQueue ?? new();
-            _oscHandler = MakeOSCHandler(oscAddress, oscPort);
+            _oscSender = new(ipEndPoint ?? STTConfig.Default.OSCEndpoint);
         }
 
-        private static OSCHandler MakeOSCHandler(string? oscAddress = null, int? oscPort = null)
+        public void SetOSCEndpoint(IPEndPoint? ipEndPoint = null)
         {
-            return new(
-                oscAddress ?? STTConfig.Default.OSCAddress,
-                oscPort ?? STTConfig.Default.OSCPort
-            );
-        }
-
-        public void SetOSCEndpoint(string? oscAddress = null, int? oscPort = null)
-        {
-            _oscHandler = MakeOSCHandler(oscAddress, oscPort);
+            _oscSender.Dispose();
+            _oscSender = new(ipEndPoint ?? STTConfig.Default.OSCEndpoint);
         }
 
         public bool IsLoopRunning => _messageLoop != null && !_messageLoop.IsCompleted;
@@ -73,7 +63,7 @@ namespace ButterSTT.MessageSystem
             {
                 timer.Restart();
 
-                SendMessage();
+                await SendMessage(cancelToken);
 
                 var timeout = RateLimit - timer.Elapsed;
                 if (timeout.TotalMilliseconds > 0)
@@ -81,7 +71,7 @@ namespace ButterSTT.MessageSystem
             }
         }
 
-        private void SendMessage()
+        private async Task SendMessage(CancellationToken cancelToken = default)
         {
             try
             {
@@ -89,17 +79,17 @@ namespace ButterSTT.MessageSystem
                 if (string.IsNullOrWhiteSpace(message) || message == _lastMessage)
                     return;
 
-                var chatbox = OSCHandler.MakeChatboxInput(message);
+                var chatbox = OSCUtils.MakeChatboxInput(message);
                 if (MessageQueue.IsFinished)
                 {
                     // Just send the message, no more typing
-                    _oscHandler.OSCSender.Send(chatbox);
+                    await _oscSender.SendAsync(chatbox);
                 }
                 else
                 {
                     // Still typing the message... Show as typing!
-                    _oscHandler.OSCSender.Send(
-                        new OscBundle(0, chatbox, OSCHandler.MakeChatboxTyping(true))
+                    await _oscSender.SendAsync(
+                        new OscBundle(0, chatbox, OSCUtils.MakeChatboxTyping(true))
                     );
                 }
 
@@ -109,6 +99,12 @@ namespace ButterSTT.MessageSystem
             {
                 Console.WriteLine(ex);
             }
+        }
+
+        public void Dispose()
+        {
+            _oscSender.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

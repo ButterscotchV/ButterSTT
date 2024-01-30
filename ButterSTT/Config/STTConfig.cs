@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json.Serialization;
 
 namespace ButterSTT.Config
@@ -16,10 +17,7 @@ namespace ButterSTT.Config
         public int MicrophoneDeviceNumber { get; set; } = 0;
 
         [JsonPropertyName("osc_address")]
-        public string OSCAddress { get; set; } = "127.0.0.1";
-
-        [JsonPropertyName("osc_port")]
-        public int OSCPort { get; set; } = 9000;
+        public string OSCAddress { get; set; } = "127.0.0.1:9000";
 
         [JsonPropertyName("osc_chatbox_ratelimit_s")]
         public double OSCChatboxRateLimitS { get; set; } = 1.3;
@@ -39,7 +37,10 @@ namespace ButterSTT.Config
         [JsonPropertyName("hard_word_time_s")]
         public double HardWordTimeS { get; set; } = 16.0;
 
-        // TimeSpan converters
+        // Converter utility properties
+        [JsonIgnore]
+        public IPEndPoint OSCEndpoint => IPEndPoint.Parse(OSCAddress);
+
         [JsonIgnore]
         public TimeSpan OSCChatboxRateLimit => TimeSpan.FromSeconds(OSCChatboxRateLimitS);
 

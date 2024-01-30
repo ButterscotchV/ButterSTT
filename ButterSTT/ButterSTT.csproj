@@ -9,15 +9,12 @@
 
   <ItemGroup>
     <PackageReference Include="AprilAsr" Version="0.0.1.7" />
-    <PackageReference Include="CSharpier.MsBuild" Version="0.27.1">
+    <PackageReference Include="CSharpier.MsBuild" Version="0.27.2">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="LucHeart.CoreOSC" Version="1.2.1" />
     <PackageReference Include="NAudio" Version="2.2.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Dependencies\CoreOSC-VRC-UTF8\CoreOSC\CoreOSC.csproj" />
   </ItemGroup>
 
 </Project>
