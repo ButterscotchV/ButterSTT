@@ -37,18 +37,21 @@ namespace ButterSTT.Config
         [JsonPropertyName("hard_word_time_s")]
         public double HardWordTimeS { get; set; } = 16.0;
 
-        // Converter utility properties
+        // Converter utilities
+        private static TimeSpan Seconds(double s) =>
+            s < 0d ? TimeSpan.MaxValue : TimeSpan.FromSeconds(s);
+
         [JsonIgnore]
         public IPEndPoint OSCEndpoint => IPEndPoint.Parse(OSCAddress);
 
         [JsonIgnore]
-        public TimeSpan OSCChatboxRateLimit => TimeSpan.FromSeconds(OSCChatboxRateLimitS);
+        public TimeSpan OSCChatboxRateLimit => Seconds(OSCChatboxRateLimitS);
 
         [JsonIgnore]
-        public TimeSpan WordTime => TimeSpan.FromSeconds(WordTimeS);
+        public TimeSpan WordTime => Seconds(WordTimeS);
 
         [JsonIgnore]
-        public TimeSpan HardWordTime => TimeSpan.FromSeconds(HardWordTimeS);
+        public TimeSpan HardWordTime => Seconds(HardWordTimeS);
     }
 
     [JsonSerializable(typeof(STTConfig))]
