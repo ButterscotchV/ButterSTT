@@ -50,7 +50,15 @@ namespace ButterSTT.MessageSystem
         private (int sentence, int word) _curIndex;
         private bool _atCurEnd = false;
 
+        /// <summary>
+        /// Keeps track of whether the current message should have a prefix.
+        /// </summary>
         private bool _pagePrefix = false;
+
+        /// <summary>
+        /// Keeps track of whether text is currently being written, if true then don't hard expire the current message.
+        /// </summary>
+        private bool _hadTextLast = false;
 
         public Paragraph CurParagraph
         {
@@ -78,6 +86,8 @@ namespace ButterSTT.MessageSystem
                     return _wordQueue.Count <= 0 && _curParagraph.Length <= 0;
             }
         }
+
+        public int AvailableMessageLength => MessageLength - _curMessageLength;
 
         public (int sentence, int word)? NextIndex()
         {
@@ -217,7 +227,7 @@ namespace ButterSTT.MessageSystem
                     return;
 
                 var paragraphLen = ParagraphLengthFromIndex();
-                var availableSpace = MessageLength - _curMessageLength;
+                var availableSpace = AvailableMessageLength;
 
                 switch (DequeueSystem)
                 {
@@ -294,8 +304,12 @@ namespace ButterSTT.MessageSystem
             var lastWord = _messageWordQueue.Last();
             var hardExpired = DateTime.UtcNow >= lastWord.HardExpiryTime;
             // Wait until the last word on the full page is expired
-            if (!hardExpired && (!IsMessageFull || DateTime.UtcNow < lastWord.ExpiryTime))
+            if (
+                (!hardExpired || _hadTextLast)
+                && (!IsMessageFull || DateTime.UtcNow < lastWord.ExpiryTime)
+            )
                 return;
+
             var removedAny = false;
             while (
                 _messageWordQueue.Count > 0
@@ -312,6 +326,7 @@ namespace ButterSTT.MessageSystem
                 _curMessageLength -= _messageWordQueue.Dequeue().Text.Length;
                 removedAny = true;
             }
+
             if (_messageWordQueue.Count <= 0)
             {
                 if (removedAny && !hardExpired && UsePagePrefix)
@@ -395,12 +410,13 @@ namespace ButterSTT.MessageSystem
                 var showSuffix = _wordQueue.Count > 0;
 
                 // If there's no queue and there's new words to display
+                _hadTextLast = false;
                 if (_wordQueue.Count <= 0 && _curParagraph.Length > 0)
                 {
                     var paragraphLength = ParagraphLengthFromIndex();
                     if (paragraphLength > 0)
                     {
-                        var availableLength = MessageLength - _curMessageLength;
+                        var availableLength = AvailableMessageLength;
                         var totalTaken = 0;
                         var paragraph = string.Concat(
                             ParagraphWordEnumerator()
@@ -417,6 +433,7 @@ namespace ButterSTT.MessageSystem
                         );
                         message += paragraph;
                         showSuffix = paragraphLength > totalTaken;
+                        _hadTextLast = totalTaken > 0;
                     }
                 }
 

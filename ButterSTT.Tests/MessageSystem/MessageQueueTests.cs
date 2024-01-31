@@ -14,32 +14,6 @@ namespace ButterSTT.MessageSystem.Tests
         }
 
         [Fact()]
-        public void ScrollTimeoutTest()
-        {
-            var queue = new MessageQueue
-            {
-                DequeueSystem = DequeueSystems.Scrolling,
-                MaxWordsDequeued = int.MaxValue,
-                WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.Zero
-            };
-
-            var firstMessage = "Testing the queue system.";
-            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
-            queue.FinishCurrentParagraph();
-            var curMessage = queue.GetCurrentMessage();
-            _output.WriteLine($"First message: \"{curMessage}\"");
-            Assert.Equal(firstMessage, curMessage);
-
-            var secondMessage = "Second test message.";
-            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
-            queue.FinishCurrentParagraph();
-            curMessage = queue.GetCurrentMessage();
-            _output.WriteLine($"Second message: \"{curMessage}\"");
-            Assert.Equal(secondMessage, curMessage);
-        }
-
-        [Fact()]
         public void ScrollMaxDequeueTest()
         {
             var queue = new MessageQueue
@@ -122,6 +96,90 @@ namespace ButterSTT.MessageSystem.Tests
             curMessage = queue.GetCurrentMessage();
             _output.WriteLine($"Third messages: \"{curMessage}\"");
             Assert.Equal($"-message. {thirdMessage}", curMessage);
+        }
+
+        [Fact()]
+        public void PageRealtimeHardWordTest()
+        {
+            var queue = new MessageQueue
+            {
+                DequeueSystem = DequeueSystems.Pagination,
+                WordTime = TimeSpan.Zero,
+                HardWordTime = TimeSpan.Zero
+            };
+
+            var firstMessage = "Testing the queue system.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
+            queue.FinishCurrentParagraph();
+            var curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"First message: \"{curMessage}\"");
+            Assert.Equal(firstMessage, curMessage);
+
+            var secondMessage = "Second test message.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
+            curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"Second message: \"{curMessage}\"");
+            Assert.Equal(secondMessage, curMessage);
+        }
+
+        [Fact()]
+        public void PageRealtimeHardWordPersistTest()
+        {
+            var queue = new MessageQueue
+            {
+                MessageLength = 46,
+                DequeueSystem = DequeueSystems.Pagination,
+                WordTime = TimeSpan.Zero,
+                HardWordTime = TimeSpan.Zero
+            };
+
+            var firstMessage = "Testing the queue system.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
+            queue.FinishCurrentParagraph();
+
+            var secondMessage = "Second test message ";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
+            var curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"Second message: \"{curMessage}\"");
+            Assert.Equal($"{firstMessage} {secondMessage.Trim()}", curMessage);
+
+            var thirdMessage = "Second test message that is just now finished!";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(thirdMessage);
+            curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"Third message: \"{curMessage}\"");
+            Assert.Equal($"{firstMessage} {secondMessage.Trim()}-", curMessage);
+
+            curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"Third message expired: \"{curMessage}\"");
+            Assert.Equal("that is just now finished!", curMessage);
+        }
+
+        [Theory()]
+        [InlineData(DequeueSystems.Scrolling)]
+        [InlineData(DequeueSystems.Pagination)]
+        public void TimeoutTest(DequeueSystems dequeueSystem)
+        {
+            var queue = new MessageQueue
+            {
+                DequeueSystem = dequeueSystem,
+                MaxWordsDequeued = int.MaxValue,
+                WordTime = TimeSpan.Zero,
+                HardWordTime = TimeSpan.Zero
+            };
+
+            var firstMessage = "Testing the queue system.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
+            queue.FinishCurrentParagraph();
+            var curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"First message: \"{curMessage}\"");
+            Assert.Equal(firstMessage, curMessage);
+
+            var secondMessage = "Second test message.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
+            queue.FinishCurrentParagraph();
+            curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"Second message: \"{curMessage}\"");
+            Assert.Equal(secondMessage, curMessage);
         }
 
         [Theory()]
