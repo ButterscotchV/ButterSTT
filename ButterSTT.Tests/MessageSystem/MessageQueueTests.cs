@@ -121,7 +121,7 @@ namespace ButterSTT.MessageSystem.Tests
             queue.FinishCurrentParagraph();
             curMessage = queue.GetCurrentMessage();
             _output.WriteLine($"Third messages: \"{curMessage}\"");
-            Assert.Equal($"message. {thirdMessage}", curMessage);
+            Assert.Equal($"-message. {thirdMessage}", curMessage);
         }
 
         [Theory()]

@@ -37,10 +37,10 @@ namespace ButterSTT.Config
         public int RealtimeQueuePadding { get; set; } = 24;
 
         [JsonPropertyName("word_time_s")]
-        public double WordTimeS { get; set; } = 5.0;
+        public double WordTimeS { get; set; } = 0.3;
 
         [JsonPropertyName("hard_word_time_s")]
-        public double HardWordTimeS { get; set; } = 16.0;
+        public double HardWordTimeS { get; set; } = 8.0;
 
         [JsonPropertyName("page_context")]
         public int PageContext { get; set; } = 1;

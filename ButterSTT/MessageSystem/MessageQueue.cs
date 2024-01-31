@@ -45,6 +45,8 @@ namespace ButterSTT.MessageSystem
         private (int sentence, int word) _curIndex;
         private bool _atCurEnd = false;
 
+        private bool _pagePrefix = false;
+
         public Paragraph CurParagraph
         {
             get
@@ -263,9 +265,6 @@ namespace ButterSTT.MessageSystem
             }
         }
 
-        private static DateTime ComputeExpiration(TimeSpan span) =>
-            span >= TimeSpan.MaxValue ? DateTime.MaxValue : DateTime.UtcNow + span;
-
         private void ExpireWords()
         {
             var dequeueCount = 0;
@@ -292,6 +291,7 @@ namespace ButterSTT.MessageSystem
             // Wait until the last word on the full page is expired
             if (!hardExpired && (!IsMessageFull || DateTime.UtcNow < lastWord.ExpiryTime))
                 return;
+            var removedAny = false;
             while (
                 _messageWordQueue.Count > 0
                 && (
@@ -305,6 +305,17 @@ namespace ButterSTT.MessageSystem
             )
             {
                 _curMessageLength -= _messageWordQueue.Dequeue().Text.Length;
+                removedAny = true;
+            }
+            if (_messageWordQueue.Count > 0 && removedAny)
+            {
+                _pagePrefix = true;
+                _curMessageLength += 1;
+            }
+            else if (_messageWordQueue.Count <= 0 && _pagePrefix)
+            {
+                _pagePrefix = false;
+                _curMessageLength -= 1;
             }
         }
 
@@ -327,6 +338,11 @@ namespace ButterSTT.MessageSystem
             }
         }
 
+        private static DateTime ComputeExpiration(DateTime time, TimeSpan span) =>
+            time >= DateTime.MaxValue || span >= TimeSpan.MaxValue
+                ? DateTime.MaxValue
+                : time + span;
+
         private void ProgressWordQueue()
         {
             // Make sure there is enough room to fit a new word in the message,
@@ -341,11 +357,15 @@ namespace ButterSTT.MessageSystem
             )
             {
                 var word = _wordQueue.Dequeue();
+                var lastTime = _messageWordQueue
+                    .Select(w => w.ExpiryTime)
+                    .LastOrDefault(DateTime.UtcNow);
+                var baseTime = DateTime.UtcNow > lastTime ? DateTime.UtcNow : lastTime;
                 _messageWordQueue.Enqueue(
                     new MessageWord(
                         word,
-                        ComputeExpiration(WordTime),
-                        ComputeExpiration(HardWordTime)
+                        ComputeExpiration(baseTime, WordTime),
+                        ComputeExpiration(baseTime, HardWordTime)
                     )
                 );
                 _curMessageLength += word.Length;
@@ -380,11 +400,14 @@ namespace ButterSTT.MessageSystem
                                     return false;
                             })
                     );
-                    return (message + paragraph).Trim()
+                    return (_pagePrefix ? "-" : "")
+                        + (message + paragraph).Trim()
                         + (_curParagraph.Length > totalTaken ? "-" : "");
                 }
 
-                return message.Trim() + (_wordQueue.Count > 0 ? "-" : "");
+                return (_pagePrefix ? "-" : "")
+                    + message.Trim()
+                    + (_wordQueue.Count > 0 ? "-" : "");
             }
         }
     }
