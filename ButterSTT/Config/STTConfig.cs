@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json.Serialization;
+using ButterSTT.MessageSystem;
 
 namespace ButterSTT.Config
 {
@@ -8,7 +9,7 @@ namespace ButterSTT.Config
         public static readonly STTConfig Default = new();
 
         [JsonPropertyName("config_version")]
-        public int ConfigVersion { get; set; } = 0;
+        public int ConfigVersion { get; set; } = 1;
 
         [JsonPropertyName("models_path")]
         public string ModelsPath { get; set; } = "Models";
@@ -24,6 +25,10 @@ namespace ButterSTT.Config
 
         [JsonPropertyName("message_length")]
         public int MessageLength { get; set; } = 144;
+
+        [JsonPropertyName("dequeue_system")]
+        public EnumConfig<DequeueSystems> DequeueSystem { get; set; } =
+            new(DequeueSystems.Pagination);
 
         [JsonPropertyName("max_words_dequeued")]
         public int MaxWordsDequeued { get; set; } = 10;
