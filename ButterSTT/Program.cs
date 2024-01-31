@@ -48,6 +48,7 @@ try
         WordTime = config.WordTime,
         HardWordTime = config.HardWordTime,
         PageContext = config.PageContext,
+        UsePagePrefix = config.UsePagePrefix,
     };
     using var oscHandler = new OSCMessageHandler(messageQueue, config.OSCEndpoint)
     {

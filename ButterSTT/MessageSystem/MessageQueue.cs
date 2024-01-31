@@ -40,6 +40,11 @@ namespace ButterSTT.MessageSystem
         /// </summary>
         public int PageContext = STTConfig.Default.PageContext;
 
+        /// <summary>
+        /// Whether to use the message prefix from pagination.
+        /// </summary>
+        public bool UsePagePrefix = STTConfig.Default.UsePagePrefix;
+
         private readonly object _syncParagraph = new();
         public Paragraph _curParagraph;
         private (int sentence, int word) _curIndex;
@@ -307,15 +312,23 @@ namespace ButterSTT.MessageSystem
                 _curMessageLength -= _messageWordQueue.Dequeue().Text.Length;
                 removedAny = true;
             }
-            if (_messageWordQueue.Count > 0 && removedAny)
+            if (_messageWordQueue.Count <= 0)
+            {
+                if (removedAny && !hardExpired && UsePagePrefix)
+                {
+                    _pagePrefix = true;
+                    _curMessageLength = 1;
+                }
+                else
+                {
+                    _pagePrefix = false;
+                    _curMessageLength = 0;
+                }
+            }
+            else if (removedAny && !_pagePrefix && UsePagePrefix)
             {
                 _pagePrefix = true;
                 _curMessageLength += 1;
-            }
-            else if (_messageWordQueue.Count <= 0 && _pagePrefix)
-            {
-                _pagePrefix = false;
-                _curMessageLength -= 1;
             }
         }
 
@@ -361,12 +374,9 @@ namespace ButterSTT.MessageSystem
                     .Select(w => w.ExpiryTime)
                     .LastOrDefault(DateTime.UtcNow);
                 var baseTime = DateTime.UtcNow > lastTime ? DateTime.UtcNow : lastTime;
+                var wordTime = ComputeExpiration(baseTime, WordTime);
                 _messageWordQueue.Enqueue(
-                    new MessageWord(
-                        word,
-                        ComputeExpiration(baseTime, WordTime),
-                        ComputeExpiration(baseTime, HardWordTime)
-                    )
+                    new MessageWord(word, wordTime, ComputeExpiration(wordTime, HardWordTime))
                 );
                 _curMessageLength += word.Length;
             }
@@ -381,33 +391,40 @@ namespace ButterSTT.MessageSystem
                 ProgressWordQueue();
 
                 var message = string.Concat(_messageWordQueue.Select(w => w.Text));
+                var showPrefix = _pagePrefix;
+                var showSuffix = _wordQueue.Count > 0;
 
                 // If there's no queue and there's new words to display
                 if (_wordQueue.Count <= 0 && _curParagraph.Length > 0)
                 {
-                    var availableLength = MessageLength - _curMessageLength;
-                    var totalTaken = 0;
-                    var paragraph = string.Concat(
-                        ParagraphWordEnumerator()
-                            .TakeWhile(w =>
-                            {
-                                if (totalTaken + w.Length <= availableLength)
+                    var paragraphLength = ParagraphLengthFromIndex();
+                    if (paragraphLength > 0)
+                    {
+                        var availableLength = MessageLength - _curMessageLength;
+                        var totalTaken = 0;
+                        var paragraph = string.Concat(
+                            ParagraphWordEnumerator()
+                                .TakeWhile(w =>
                                 {
-                                    totalTaken += w.Length;
-                                    return true;
-                                }
-                                else
-                                    return false;
-                            })
-                    );
-                    return (_pagePrefix ? "-" : "")
-                        + (message + paragraph).Trim()
-                        + (_curParagraph.Length > totalTaken ? "-" : "");
+                                    if (totalTaken + w.Length <= availableLength)
+                                    {
+                                        totalTaken += w.Length;
+                                        return true;
+                                    }
+                                    else
+                                        return false;
+                                })
+                        );
+                        message += paragraph;
+                        showSuffix = paragraphLength > totalTaken;
+                    }
                 }
 
-                return (_pagePrefix ? "-" : "")
-                    + message.Trim()
-                    + (_wordQueue.Count > 0 ? "-" : "");
+                if (string.IsNullOrWhiteSpace(message))
+                    return "";
+
+                message = message.Trim();
+                return (showPrefix ? "-" : "") + message + (showSuffix ? "-" : "");
             }
         }
     }

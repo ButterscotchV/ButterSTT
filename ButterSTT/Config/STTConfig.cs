@@ -9,7 +9,7 @@ namespace ButterSTT.Config
         public static readonly STTConfig Default = new();
 
         [JsonPropertyName("config_version")]
-        public int ConfigVersion { get; set; } = 1;
+        public int ConfigVersion { get; set; } = 2;
 
         [JsonPropertyName("models_path")]
         public string ModelsPath { get; set; } = "Models";
@@ -40,10 +40,13 @@ namespace ButterSTT.Config
         public double WordTimeS { get; set; } = 0.3;
 
         [JsonPropertyName("hard_word_time_s")]
-        public double HardWordTimeS { get; set; } = 8.0;
+        public double HardWordTimeS { get; set; } = 5.0;
 
         [JsonPropertyName("page_context")]
         public int PageContext { get; set; } = 1;
+
+        [JsonPropertyName("use_page_prefix")]
+        public bool UsePagePrefix { get; set; } = true;
 
         // Converter utilities
         private static TimeSpan Seconds(double s) =>
