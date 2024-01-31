@@ -11,6 +11,11 @@ namespace ButterSTT.MessageSystem
         public int MessageLength = STTConfig.Default.MessageLength;
 
         /// <summary>
+        /// Which of the <see cref="DequeueSystems"/> to use.
+        /// </summary>
+        public DequeueSystems DequeueSystem = STTConfig.Default.DequeueSystem.EnumValue;
+
+        /// <summary>
         /// The maximum number of words to dequeue at once, regardless of their expiration time.
         /// </summary>
         public int MaxWordsDequeued = STTConfig.Default.MaxWordsDequeued;
@@ -30,9 +35,15 @@ namespace ButterSTT.MessageSystem
         /// </summary>
         public TimeSpan HardWordTime = STTConfig.Default.HardWordTime;
 
+        /// <summary>
+        /// The number of words to keep after removing a page.
+        /// </summary>
+        public int PageContext = STTConfig.Default.PageContext;
+
         private readonly object _syncParagraph = new();
         public Paragraph _curParagraph;
         private (int sentence, int word) _curIndex;
+        private bool _atCurEnd = false;
 
         public Paragraph CurParagraph
         {
@@ -61,14 +72,45 @@ namespace ButterSTT.MessageSystem
             }
         }
 
-        private void InternLimitWordIndex()
+        public (int sentence, int word)? NextIndex()
+        {
+            if (_curParagraph.Sentences.Length <= 0)
+                return null;
+
+            // If there's another word, take it
+            if (_curParagraph.Sentences[_curIndex.sentence].Words.Length > _curIndex.word + 1)
+                return (_curIndex.sentence, _curIndex.word + 1);
+
+            // If there's another sentence with any words, take that
+            for (var s = _curIndex.sentence; s < _curParagraph.Sentences.Length; s++)
+            {
+                if (_curParagraph.Sentences[s].Words.Length > 0)
+                    return (s, 0);
+            }
+
+            return null;
+        }
+
+        private void LimitWordIndex()
         {
             lock (_syncParagraph)
             {
+                if (_curParagraph.Sentences.Length <= 0)
+                    return;
                 _curIndex.word = Math.Max(
                     0,
                     _curParagraph.Sentences[_curIndex.sentence].Words.Length - 1
                 );
+
+                if (_atCurEnd)
+                {
+                    var nextIndex = NextIndex();
+                    if (nextIndex != null)
+                    {
+                        _curIndex = nextIndex.Value;
+                        _atCurEnd = false;
+                    }
+                }
             }
         }
 
@@ -80,11 +122,11 @@ namespace ButterSTT.MessageSystem
                 {
                     // Move to the end of the last known position
                     _curIndex.sentence = Math.Max(0, _curParagraph.Sentences.Length - 1);
-                    InternLimitWordIndex();
+                    LimitWordIndex();
                 }
                 else if (_curParagraph.Sentences[_curIndex.sentence].Length <= _curIndex.word)
                 {
-                    InternLimitWordIndex();
+                    LimitWordIndex();
                 }
             }
         }
@@ -95,6 +137,10 @@ namespace ButterSTT.MessageSystem
             {
                 // Limit the index if length has changed since last known
                 LimitParagraphIndex();
+
+                // If it's at the end, don't return anything
+                if (_atCurEnd)
+                    yield break;
 
                 // Queue all words after the current displayed ones
                 for (var s = _curIndex.sentence; s < _curParagraph.Sentences.Length; s++)
@@ -125,6 +171,7 @@ namespace ButterSTT.MessageSystem
                 // Reset states
                 _curParagraph = default;
                 _curIndex = default;
+                _atCurEnd = false;
             }
         }
 
@@ -138,10 +185,43 @@ namespace ButterSTT.MessageSystem
         {
             lock (_syncParagraph)
             {
+                if (_curParagraph.Length <= 0)
+                {
+                    _curIndex = default;
+                    _atCurEnd = false;
+                    return;
+                }
+
+                switch (DequeueSystem)
+                {
+                    case DequeueSystems.Scrolling:
+                        // If the full current paragraph doesn't exceed the padded
+                        // mesage length, we can just ignore it entirely
+                        if (_curParagraph.Length > MessageLength - padding)
+                            return;
+                        break;
+                }
+
                 // Limit the index if length has changed since last known
                 LimitParagraphIndex();
 
+                // If it's at the end, we don't need to do anything
+                if (_atCurEnd)
+                    return;
+
                 var paragraphLen = ParagraphLengthFromIndex();
+                var availableSpace = MessageLength - _curMessageLength;
+
+                switch (DequeueSystem)
+                {
+                    case DequeueSystems.Pagination:
+                        // Don't run if the new paragraph doesn't fill all the
+                        // available space
+                        if (availableSpace > paragraphLen)
+                            return;
+                        break;
+                }
+
                 // Queue as few words after the current displayed ones
                 for (var s = _curIndex.sentence; s < _curParagraph.Sentences.Length; s++)
                 {
@@ -152,22 +232,100 @@ namespace ButterSTT.MessageSystem
                         w++
                     )
                     {
+                        var word = sentence.Words[w].Text;
+
                         if (paragraphLen <= MessageLength - padding)
                         {
-                            _curIndex = (s, w);
-                            return;
+                            switch (DequeueSystem)
+                            {
+                                case DequeueSystems.Scrolling:
+                                    _curIndex = (s, w);
+                                    return;
+                                case DequeueSystems.Pagination:
+                                    // Only finish if the available space is filled to
+                                    // make a full page to dequeue
+                                    if (availableSpace < word.Length)
+                                    {
+                                        _curIndex = (s, w);
+                                        return;
+                                    }
+                                    break;
+                            }
                         }
 
-                        var word = sentence.Words[w].Text;
                         _wordQueue.Enqueue(word);
                         paragraphLen -= word.Length;
+                        availableSpace -= word.Length;
                     }
                 }
+
+                _atCurEnd = true;
             }
         }
 
         private static DateTime ComputeExpiration(TimeSpan span) =>
             span >= TimeSpan.MaxValue ? DateTime.MaxValue : DateTime.UtcNow + span;
+
+        private void ExpireWords()
+        {
+            var dequeueCount = 0;
+            while (
+                _messageWordQueue.TryPeek(out var expiredWord)
+                && (
+                    (dequeueCount < MaxWordsDequeued && DateTime.UtcNow >= expiredWord.ExpiryTime)
+                    || DateTime.UtcNow >= expiredWord.HardExpiryTime
+                )
+            )
+            {
+                _curMessageLength -= _messageWordQueue.Dequeue().Text.Length;
+                dequeueCount++;
+            }
+        }
+
+        private bool IsMessageFull =>
+            _wordQueue.TryPeek(out var word) && _curMessageLength + word.Length > MessageLength;
+
+        private void PaginateWords()
+        {
+            var lastWord = _messageWordQueue.Last();
+            var hardExpired = DateTime.UtcNow >= lastWord.HardExpiryTime;
+            // Wait until the last word on the full page is expired
+            if (!hardExpired && (!IsMessageFull || DateTime.UtcNow < lastWord.ExpiryTime))
+                return;
+            while (
+                _messageWordQueue.Count > 0
+                && (
+                    hardExpired
+                    || _messageWordQueue.Count > PageContext
+                    || (
+                        _messageWordQueue.TryPeek(out var expiredWord)
+                        && DateTime.UtcNow >= expiredWord.HardExpiryTime
+                    )
+                )
+            )
+            {
+                _curMessageLength -= _messageWordQueue.Dequeue().Text.Length;
+            }
+        }
+
+        private void DequeueMessages()
+        {
+            // Only dequeue words if more space is needed
+            if (
+                _messageWordQueue.Count <= 0
+                || (_wordQueue.Count <= 0 && _curParagraph.Length <= 0)
+            )
+                return;
+            switch (DequeueSystem)
+            {
+                case DequeueSystems.Scrolling:
+                    ExpireWords();
+                    break;
+                case DequeueSystems.Pagination:
+                    PaginateWords();
+                    break;
+            }
+        }
 
         private void ProgressWordQueue()
         {
@@ -198,29 +356,8 @@ namespace ButterSTT.MessageSystem
         {
             lock (_syncParagraph)
             {
-                // Remove expired words if more space is needed
-                if (_wordQueue.Count > 0 || _curParagraph.Length > 0)
-                {
-                    var dequeueCount = 0;
-                    while (
-                        _messageWordQueue.TryPeek(out var expiredWord)
-                        && (
-                            (
-                                dequeueCount < MaxWordsDequeued
-                                && DateTime.UtcNow >= expiredWord.ExpiryTime
-                            )
-                            || DateTime.UtcNow >= expiredWord.HardExpiryTime
-                        )
-                    )
-                    {
-                        _curMessageLength -= _messageWordQueue.Dequeue().Text.Length;
-                        dequeueCount++;
-                    }
-                }
-
-                if (_curParagraph.Length >= MessageLength)
-                    QueueParagraphToFit(RealtimeQueuePadding);
-
+                DequeueMessages();
+                QueueParagraphToFit(RealtimeQueuePadding);
                 ProgressWordQueue();
 
                 var message = string.Concat(_messageWordQueue.Select(w => w.Text));

@@ -14,10 +14,11 @@ namespace ButterSTT.MessageSystem.Tests
         }
 
         [Fact()]
-        public void TimeoutTest()
+        public void ScrollTimeoutTest()
         {
             var queue = new MessageQueue
             {
+                DequeueSystem = DequeueSystems.Scrolling,
                 MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
                 HardWordTime = TimeSpan.Zero
@@ -39,32 +40,11 @@ namespace ButterSTT.MessageSystem.Tests
         }
 
         [Fact()]
-        public void CombineTest()
+        public void ScrollMaxDequeueTest()
         {
             var queue = new MessageQueue
             {
-                MaxWordsDequeued = int.MaxValue,
-                WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.Zero
-            };
-
-            var firstMessage = "Testing the queue system.";
-            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
-            queue.FinishCurrentParagraph();
-            var secondMessage = "Second test message.";
-            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
-            queue.FinishCurrentParagraph();
-
-            var curMessage = queue.GetCurrentMessage();
-            _output.WriteLine($"Combined message: \"{curMessage}\"");
-            Assert.Equal($"{firstMessage} {secondMessage}", curMessage);
-        }
-
-        [Fact()]
-        public void MaxDequeueTest()
-        {
-            var queue = new MessageQueue
-            {
+                DequeueSystem = DequeueSystems.Scrolling,
                 MaxWordsDequeued = 2,
                 WordTime = TimeSpan.Zero,
                 HardWordTime = TimeSpan.MaxValue
@@ -86,10 +66,11 @@ namespace ButterSTT.MessageSystem.Tests
         }
 
         [Fact()]
-        public void HardWordTest()
+        public void ScrollHardWordTest()
         {
             var queue = new MessageQueue
             {
+                DequeueSystem = DequeueSystems.Scrolling,
                 MaxWordsDequeued = 2,
                 WordTime = TimeSpan.Zero,
                 HardWordTime = TimeSpan.Zero
@@ -111,10 +92,71 @@ namespace ButterSTT.MessageSystem.Tests
         }
 
         [Fact()]
-        public void RealtimeTest()
+        public void PageDequeueTest()
         {
             var queue = new MessageQueue
             {
+                MessageLength = 47,
+                DequeueSystem = DequeueSystems.Pagination,
+                WordTime = TimeSpan.Zero,
+                HardWordTime = TimeSpan.MaxValue
+            };
+
+            var firstMessage = "Testing the queue system.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
+            queue.FinishCurrentParagraph();
+            var curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"First message: \"{curMessage}\"");
+            Assert.Equal(firstMessage, curMessage);
+
+            var secondMessage = "Second test message.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
+            queue.FinishCurrentParagraph();
+            curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"Both messages: \"{curMessage}\"");
+            Assert.Equal($"{firstMessage} {secondMessage}", curMessage);
+
+            var thirdMessage = "Testing a third time.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(thirdMessage);
+            queue.FinishCurrentParagraph();
+            curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"Third messages: \"{curMessage}\"");
+            Assert.Equal($"message. {thirdMessage}", curMessage);
+        }
+
+        [Theory()]
+        [InlineData(DequeueSystems.Scrolling)]
+        [InlineData(DequeueSystems.Pagination)]
+        public void CombineTest(DequeueSystems dequeueSystem)
+        {
+            var queue = new MessageQueue
+            {
+                DequeueSystem = dequeueSystem,
+                MaxWordsDequeued = int.MaxValue,
+                WordTime = TimeSpan.Zero,
+                HardWordTime = TimeSpan.Zero
+            };
+
+            var firstMessage = "Testing the queue system.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
+            queue.FinishCurrentParagraph();
+            var secondMessage = "Second test message.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
+            queue.FinishCurrentParagraph();
+
+            var curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"Combined message: \"{curMessage}\"");
+            Assert.Equal($"{firstMessage} {secondMessage}", curMessage);
+        }
+
+        [Theory()]
+        [InlineData(DequeueSystems.Scrolling)]
+        [InlineData(DequeueSystems.Pagination)]
+        public void RealtimeTest(DequeueSystems dequeueSystem)
+        {
+            var queue = new MessageQueue
+            {
+                DequeueSystem = dequeueSystem,
                 MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
                 HardWordTime = TimeSpan.Zero
@@ -148,11 +190,14 @@ namespace ButterSTT.MessageSystem.Tests
             Assert.Equal(fourthMessage, curMessage);
         }
 
-        [Fact()]
-        public void RealtimeAppendingTest()
+        [Theory()]
+        [InlineData(DequeueSystems.Scrolling)]
+        [InlineData(DequeueSystems.Pagination)]
+        public void RealtimeAppendingTest(DequeueSystems dequeueSystem)
         {
             var queue = new MessageQueue
             {
+                DequeueSystem = dequeueSystem,
                 MaxWordsDequeued = 0,
                 WordTime = TimeSpan.MaxValue,
                 HardWordTime = TimeSpan.MaxValue
@@ -178,12 +223,15 @@ namespace ButterSTT.MessageSystem.Tests
             Assert.Equal($"{firstMessage} {thirdMessage}", curMessage);
         }
 
-        [Fact()]
-        public void RealtimeAppendingTooLongTest()
+        [Theory()]
+        [InlineData(DequeueSystems.Scrolling)]
+        [InlineData(DequeueSystems.Pagination)]
+        public void RealtimeAppendingTooLongTest(DequeueSystems dequeueSystem)
         {
             var queue = new MessageQueue
             {
                 MessageLength = 33,
+                DequeueSystem = dequeueSystem,
                 MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
                 HardWordTime = TimeSpan.Zero
@@ -202,12 +250,15 @@ namespace ButterSTT.MessageSystem.Tests
             Assert.Equal($"{firstMessage} Second-", curMessage);
         }
 
-        [Fact()]
-        public void RealtimeTooLongTest()
+        [Theory()]
+        [InlineData(DequeueSystems.Scrolling)]
+        [InlineData(DequeueSystems.Pagination)]
+        public void RealtimeTooLongTest(DequeueSystems dequeueSystem)
         {
             var queue = new MessageQueue
             {
                 MessageLength = 18,
+                DequeueSystem = dequeueSystem,
                 MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
                 HardWordTime = TimeSpan.Zero

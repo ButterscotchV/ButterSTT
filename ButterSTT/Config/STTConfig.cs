@@ -42,6 +42,9 @@ namespace ButterSTT.Config
         [JsonPropertyName("hard_word_time_s")]
         public double HardWordTimeS { get; set; } = 16.0;
 
+        [JsonPropertyName("page_context")]
+        public int PageContext { get; set; } = 1;
+
         // Converter utilities
         private static TimeSpan Seconds(double s) =>
             s < 0d ? TimeSpan.MaxValue : TimeSpan.FromSeconds(s);

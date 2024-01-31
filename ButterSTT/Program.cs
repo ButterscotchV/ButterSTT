@@ -42,10 +42,12 @@ try
     var messageQueue = new MessageQueue()
     {
         MessageLength = config.MessageLength,
+        DequeueSystem = config.DequeueSystem.EnumValue,
         MaxWordsDequeued = config.MaxWordsDequeued < 0 ? int.MaxValue : config.MaxWordsDequeued,
         RealtimeQueuePadding = config.RealtimeQueuePadding,
         WordTime = config.WordTime,
         HardWordTime = config.HardWordTime,
+        PageContext = config.PageContext,
     };
     using var oscHandler = new OSCMessageHandler(messageQueue, config.OSCEndpoint)
     {
