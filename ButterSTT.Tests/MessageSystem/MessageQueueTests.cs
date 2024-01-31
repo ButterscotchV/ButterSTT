@@ -154,6 +154,38 @@ namespace ButterSTT.MessageSystem.Tests
             Assert.Equal("that is just now finished!", curMessage);
         }
 
+        [Fact()]
+        public void PageRealtimeWordTest()
+        {
+            var queue = new MessageQueue
+            {
+                MessageLength = 26,
+                DequeueSystem = DequeueSystems.Pagination,
+                RealtimeQueuePadding = 0,
+                WordTime = TimeSpan.Zero,
+                HardWordTime = TimeSpan.MaxValue
+            };
+
+            var firstMessage = "Testing the queue system.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(firstMessage);
+            queue.FinishCurrentParagraph();
+            var curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"First message: \"{curMessage}\"");
+            Assert.Equal(firstMessage, curMessage);
+
+            var secondMessage = "Second test.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(secondMessage);
+            curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"Second message: \"{curMessage}\"");
+            Assert.Equal($"-system. {secondMessage}", curMessage);
+
+            var thirdMessage = "Third test.";
+            queue.CurParagraph = EnglishTextParser.ParseParagraph(thirdMessage);
+            curMessage = queue.GetCurrentMessage();
+            _output.WriteLine($"Second message expired: \"{curMessage}\"");
+            Assert.Equal($"-system. {thirdMessage}", curMessage);
+        }
+
         [Theory()]
         [InlineData(DequeueSystems.Scrolling)]
         [InlineData(DequeueSystems.Pagination)]

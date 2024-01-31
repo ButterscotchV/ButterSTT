@@ -297,7 +297,9 @@ namespace ButterSTT.MessageSystem
         }
 
         private bool IsMessageFull =>
-            _wordQueue.TryPeek(out var word) && _curMessageLength + word.Length > MessageLength;
+            (_wordQueue.TryPeek(out var word) && word.Length > AvailableMessageLength)
+            || ParagraphWordEnumerator().Select(w => w.Length).FirstOrDefault(0)
+                > AvailableMessageLength;
 
         private void PaginateWords()
         {
@@ -305,8 +307,8 @@ namespace ButterSTT.MessageSystem
             var hardExpired = DateTime.UtcNow >= lastWord.HardExpiryTime;
             // Wait until the last word on the full page is expired
             if (
-                (!hardExpired || _hadTextLast)
-                && (!IsMessageFull || DateTime.UtcNow < lastWord.ExpiryTime)
+                _hadTextLast
+                || (!hardExpired && (DateTime.UtcNow < lastWord.ExpiryTime || !IsMessageFull))
             )
                 return;
 
