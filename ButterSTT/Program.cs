@@ -4,6 +4,18 @@ using ButterSTT.MessageSystem;
 
 try
 {
+    // Print program info
+    Console.WriteLine($"Starting {Constants.Name} v{Constants.Version} ({Constants.Url})...\n");
+
+    // Print available audio devices
+    var audioDevices = string.Join(
+        '\n',
+        AudioUtils
+            .EnumerateWaveInDevices()
+            .Select(d => $" - [{d.index}]: {d.mmDevice?.FriendlyName ?? d.device.ProductName}")
+    );
+    Console.WriteLine($"Available audio devices:\n{audioDevices}\n");
+
     // Load config
     JsonConfigHandler<STTConfig> configHandler =
         new("config.json", JsonConfigHandler<STTConfig>.Context.STTConfig);
