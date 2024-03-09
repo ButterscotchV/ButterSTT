@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="AprilAsr" Version="0.0.1.7" />
-    <PackageReference Include="CSharpier.MsBuild" Version="0.27.2">
+    <PackageReference Include="CSharpier.MsBuild" Version="0.27.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
