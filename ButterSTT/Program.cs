@@ -68,12 +68,12 @@ try
     };
     oscHandler.StartMessageLoop();
 
-    using var speechToTextHandler = new SpeechToTextHandler(
+    using var speechToTextHandler = new ButterSTT.STT.AprilAsr(
         modelFile,
         oscHandler.MessageQueue,
         deviceNumber: config.MicrophoneDeviceNumber
     );
-    speechToTextHandler.StartRecording();
+    speechToTextHandler.AudioHandler.StartRecording();
 
     Console.ReadLine();
 }
