@@ -18,7 +18,10 @@ try
 
     // Load config
     JsonConfigHandler<STTConfig> configHandler =
-        new("config.json", JsonConfigHandler<STTConfig>.Context.STTConfig);
+        new(
+            Path.Join(AppDomain.CurrentDomain.BaseDirectory, "config.json"),
+            JsonConfigHandler<STTConfig>.Context.STTConfig
+        );
     STTConfig config = configHandler.InitializeConfig(STTConfig.Default);
 
     // Fill in new values if the version changed
