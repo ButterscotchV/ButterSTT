@@ -67,7 +67,7 @@ try
     };
     using var oscHandler = new OSCMessageHandler(messageQueue, config.OSCEndpoint)
     {
-        RateLimit = config.OSCChatboxRateLimit
+        RateLimit = config.OSCChatboxRateLimit,
     };
     oscHandler.StartMessageLoop();
 

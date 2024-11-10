@@ -23,7 +23,7 @@ namespace ButterSTT.STT
             _audioIn = new WaveInEvent()
             {
                 DeviceNumber = deviceNumber,
-                WaveFormat = new(sampleRate, 16, 1)
+                WaveFormat = new(sampleRate, 16, 1),
             };
             WaveDeviceNumber = deviceNumber;
 

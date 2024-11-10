@@ -9,14 +9,14 @@
 
   <ItemGroup>
     <PackageReference Include="AprilAsr" Version="0.0.1.7" />
-    <PackageReference Include="CSharpier.MsBuild" Version="0.27.3">
+    <PackageReference Include="CSharpier.MsBuild" Version="0.29.2">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="LucHeart.CoreOSC" Version="1.2.1" />
+    <PackageReference Include="LucHeart.CoreOSC" Version="1.4.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="Whisper.net" Version="1.5.0" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.5.0" />
+    <PackageReference Include="Whisper.net" Version="1.7.2" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.7.2" />
   </ItemGroup>
 
 </Project>

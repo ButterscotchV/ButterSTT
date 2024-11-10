@@ -21,7 +21,7 @@ namespace ButterSTT.MessageSystem.Tests
                 DequeueSystem = DequeueSystems.Scrolling,
                 MaxWordsDequeued = 2,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.MaxValue
+                HardWordTime = TimeSpan.MaxValue,
             };
 
             var firstMessage = "Testing the queue system.";
@@ -47,7 +47,7 @@ namespace ButterSTT.MessageSystem.Tests
                 DequeueSystem = DequeueSystems.Scrolling,
                 MaxWordsDequeued = 2,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.Zero
+                HardWordTime = TimeSpan.Zero,
             };
 
             var firstMessage = "Testing the queue system.";
@@ -73,7 +73,7 @@ namespace ButterSTT.MessageSystem.Tests
                 MessageLength = 47,
                 DequeueSystem = DequeueSystems.Pagination,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.MaxValue
+                HardWordTime = TimeSpan.MaxValue,
             };
 
             var firstMessage = "Testing the queue system.";
@@ -105,7 +105,7 @@ namespace ButterSTT.MessageSystem.Tests
             {
                 DequeueSystem = DequeueSystems.Pagination,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.Zero
+                HardWordTime = TimeSpan.Zero,
             };
 
             var firstMessage = "Testing the queue system.";
@@ -130,7 +130,7 @@ namespace ButterSTT.MessageSystem.Tests
                 MessageLength = 46,
                 DequeueSystem = DequeueSystems.Pagination,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.Zero
+                HardWordTime = TimeSpan.Zero,
             };
 
             var firstMessage = "Testing the queue system.";
@@ -163,7 +163,7 @@ namespace ButterSTT.MessageSystem.Tests
                 DequeueSystem = DequeueSystems.Pagination,
                 RealtimeQueuePadding = 0,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.MaxValue
+                HardWordTime = TimeSpan.MaxValue,
             };
 
             var firstMessage = "Testing the queue system.";
@@ -196,7 +196,7 @@ namespace ButterSTT.MessageSystem.Tests
                 DequeueSystem = dequeueSystem,
                 MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.Zero
+                HardWordTime = TimeSpan.Zero,
             };
 
             var firstMessage = "Testing the queue system.";
@@ -224,7 +224,7 @@ namespace ButterSTT.MessageSystem.Tests
                 DequeueSystem = dequeueSystem,
                 MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.Zero
+                HardWordTime = TimeSpan.Zero,
             };
 
             var firstMessage = "Testing the queue system.";
@@ -249,7 +249,7 @@ namespace ButterSTT.MessageSystem.Tests
                 DequeueSystem = dequeueSystem,
                 MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.Zero
+                HardWordTime = TimeSpan.Zero,
             };
 
             // Likely incomplete word
@@ -290,7 +290,7 @@ namespace ButterSTT.MessageSystem.Tests
                 DequeueSystem = dequeueSystem,
                 MaxWordsDequeued = 0,
                 WordTime = TimeSpan.MaxValue,
-                HardWordTime = TimeSpan.MaxValue
+                HardWordTime = TimeSpan.MaxValue,
             };
 
             // Initial message, fully completed
@@ -324,7 +324,7 @@ namespace ButterSTT.MessageSystem.Tests
                 DequeueSystem = dequeueSystem,
                 MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.Zero
+                HardWordTime = TimeSpan.Zero,
             };
 
             // Initial message, fully completed
@@ -351,7 +351,7 @@ namespace ButterSTT.MessageSystem.Tests
                 DequeueSystem = dequeueSystem,
                 MaxWordsDequeued = int.MaxValue,
                 WordTime = TimeSpan.Zero,
-                HardWordTime = TimeSpan.Zero
+                HardWordTime = TimeSpan.Zero,
             };
 
             queue.CurParagraph = EnglishTextParser.ParseParagraph("Testing th");
