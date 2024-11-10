@@ -11,6 +11,7 @@ namespace ButterSTT.STT
 
         public int WaveDeviceNumber { get; private set; } =
             STTConfig.Default.MicrophoneDeviceNumber;
+        public int WaveSampleRate { get; }
         public bool IsMicrophoneRecording { get; private set; } = false;
 
         public event EventHandler? OnMicStart;
@@ -26,6 +27,7 @@ namespace ButterSTT.STT
                 WaveFormat = new(sampleRate, 16, 1),
             };
             WaveDeviceNumber = deviceNumber;
+            WaveSampleRate = sampleRate;
 
             // Register microphone events
             _audioIn.DataAvailable += OnWaveData;
@@ -84,6 +86,16 @@ namespace ButterSTT.STT
             var shorts = new short[args.BytesRecorded / sizeof(short)];
             Buffer.BlockCopy(args.Buffer, 0, shorts, 0, args.BytesRecorded);
 
+            ProcessWaveData(shorts);
+        }
+
+        protected virtual void ProcessWaveData(short[] shorts)
+        {
+            SendWaveData(shorts);
+        }
+
+        protected void SendWaveData(short[] shorts)
+        {
             OnMicData?.Invoke(this, (shorts, shorts.Length));
         }
 
